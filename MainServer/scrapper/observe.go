@@ -1,4 +1,4 @@
-package github_sdk
+package scrapper
 
 type Observer interface {
 	Notify()

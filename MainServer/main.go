@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Crypto_Bot/Scrapper/server"
+	"Crypto_Bot/MainServer/server"
 	"os"
 )
 
@@ -10,14 +10,7 @@ func main() {
 	if !exist {
 		return
 	}
-	db, exist := os.LookupEnv("DB_URL")
-	if !exist {
-		return
-	}
-	server, err := server.BuildServer(server_url, db)
-	if err != nil {
-		return
-	}
+	server := server.BuildServer(server_url, nil, nil, nil)
 	defer server.Stop()
 	server.Start()
 }

@@ -1,7 +1,7 @@
 package github_sdk
 
 import (
-	"Crypto_Bot/Scrapper/custom_errors"
+	"Crypto_Bot/MainServer/custom_errors"
 	"encoding/json"
 	"io"
 	"net/http"

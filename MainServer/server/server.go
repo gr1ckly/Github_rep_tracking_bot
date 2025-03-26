@@ -1,23 +1,27 @@
 package server
 
 import (
+	"Crypto_Bot/MainServer/storage"
 	mux2 "github.com/gorilla/mux"
 	"net/http"
 )
 
 type Server struct {
-	serverUrl string
-	router    *mux2.Router
+	serverUrl           string
+	router              *mux2.Router
+	chatStore           *storage.ChatStore
+	repoStore           *storage.RepoStore
+	chatRepoRecordStore *storage.ChatRepoRecordStore
 }
 
-func BuildServer(serverUrl string, dbUrl string) (*Server, error) {
+func BuildServer(serverUrl string, chatStore *storage.ChatStore, repoStore *storage.RepoStore, chatRepoRecordStore *storage.ChatRepoRecordStore) *Server {
 	router := mux2.NewRouter()
 	router.HandleFunc("/user", handleAddUser).Methods("POST")
 	router.HandleFunc("/user", handleDeleteUser).Methods("DELETE")
 	router.HandleFunc("/repo", handleGetLinks).Methods("GET")
 	router.HandleFunc("/repo", handleAddLink).Methods("POST")
 	router.HandleFunc("/repo", handleDeleteLink).Methods("DELETE")
-	return &Server{router: router}, nil
+	return &Server{serverUrl: serverUrl, router: router, chatStore: chatStore, repoStore: repoStore, chatRepoRecordStore: chatRepoRecordStore}
 }
 
 func (serv *Server) Start() error {
