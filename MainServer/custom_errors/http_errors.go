@@ -1,6 +1,8 @@
 package custom_errors
 
-import "strconv"
+import (
+	"strconv"
+)
 
 type StatusError struct {
 	StatusCode int

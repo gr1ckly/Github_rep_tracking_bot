@@ -7,15 +7,14 @@ import (
 )
 
 const (
-	ADD_CHAT         = `INSERT INTO CHAT(CHAT_ID, TYPE) VALUES ($1, $2) RETURNING ID;`
+	ADD_CHAT         = `INSERT INTO CHAT(CHAT_ID, TYPE) VALUES ($1, $2);`
 	REMOVE_CHAT      = `DELETE FROM CHAT WHERE CHAT_ID = $1`
 	GET_BY_ID_CHAT   = `SELECT * FROM CHAT WHERE CHAT_ID = $1`
-	GET_CHATS_OFFSET = `SELECT * FROM CHAT order by ID OFFSET $1 LIMIT $2;`
+	GET_CHATS_OFFSET = `SELECT * FROM CHAT order by CHAT_ID OFFSET $1 LIMIT $2;`
 	GET_CHAT_NUMBER  = `SELECT COUNT(*) AS TOTAL_ROWS FROM CHAT;`
 	UPDATE_CHAT      = `UPDATE CHAT
-SET CHAT_ID = $1,
-    TYPE = $2
-WHERE id = $3;`
+SET TYPE = $1
+WHERE CHAT_ID = $2;`
 )
 
 const (
@@ -68,16 +67,15 @@ func (pc *PostgresChatStore) AddNewChat(ctx context.Context, chat *storage.Chat)
 	defer conn.Release()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	var id int
-	err = tx.QueryRow(ctx, ADD_CHAT_NAME, chat.ChatID, chat.Type).Scan(&id)
+	_, err = tx.Exec(ctx, ADD_CHAT_NAME, chat.ChatID, chat.Type)
 	if err != nil {
 		return -1, err
 	}
 	err = tx.Commit(ctx)
-	return id, err
+	return chat.ChatID, err
 }
 
-func (pc *PostgresChatStore) RemoveChat(ctx context.Context, chat *storage.Chat) error {
+func (pc *PostgresChatStore) RemoveChat(ctx context.Context, id int) error {
 	conn, err := pc.pool.Acquire(ctx)
 	if err != nil {
 		return nil
@@ -85,7 +83,7 @@ func (pc *PostgresChatStore) RemoveChat(ctx context.Context, chat *storage.Chat)
 	defer conn.Release()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, REMOVE_CHAT_NAME, chat.ID)
+	_, err = tx.Exec(ctx, REMOVE_CHAT_NAME, id)
 	if err != nil {
 		return err
 	}
@@ -102,7 +100,7 @@ func (pc *PostgresChatStore) GetChatByID(ctx context.Context, id int) (*storage.
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	chat := storage.Chat{}
-	err = tx.QueryRow(ctx, GET_BY_ID_CHAT_NAME, id).Scan(&chat.ID, &chat.ChatID, &chat.Type)
+	err = tx.QueryRow(ctx, GET_BY_ID_CHAT_NAME, id).Scan(&chat.ChatID, &chat.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +123,7 @@ func (pc *PostgresChatStore) GetChatsOffset(ctx context.Context, start int, limi
 	answer := []storage.Chat{}
 	for row.Next() {
 		chat := storage.Chat{}
-		err = row.Scan(&chat.ID, &chat.ChatID, &chat.Type)
+		err = row.Scan(&chat.ChatID, &chat.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -160,7 +158,7 @@ func (pc *PostgresChatStore) UpdateChat(ctx context.Context, chat *storage.Chat)
 	defer conn.Release()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, UPDATE_CHAT_NAME, chat.ChatID, chat.Type, chat.ID)
+	_, err = tx.Exec(ctx, UPDATE_CHAT_NAME, chat.Type, chat.ChatID)
 	if err != nil {
 		return err
 	}

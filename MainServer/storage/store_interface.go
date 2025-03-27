@@ -4,7 +4,7 @@ import "context"
 
 type ChatStore interface {
 	AddNewChat(ctx context.Context, chat *Chat) (int, error)
-	RemoveChat(ctx context.Context, chat *Chat) error
+	RemoveChat(ctx context.Context, id int) error
 	GetChatByID(ctx context.Context, id int) (*Chat, error)
 	GetChatsOffset(ctx context.Context, start int, limit int) ([]Chat, error)
 	GetChatNumber(ctx context.Context) (int, error)
@@ -13,7 +13,7 @@ type ChatStore interface {
 
 type RepoStore interface {
 	AddNewRepo(ctx context.Context, repo *Repo) (int, error)
-	RemoveRepo(ctx context.Context, repo *Repo) error
+	RemoveRepo(ctx context.Context, id int) error
 	GetRepoByID(ctx context.Context, id int) (*Repo, error)
 	GetRepoByOwnerAndName(ctx context.Context, owner string, name string) (*Repo, error)
 	GetReposOffset(ctx context.Context, start int, limit int) ([]Repo, error)
@@ -23,8 +23,9 @@ type RepoStore interface {
 
 type ChatRepoRecordStore interface {
 	AddNewRecord(ctx context.Context, record *ChatRepoRecord) (int, error)
-	RemoveRecord(ctx context.Context, record *ChatRepoRecord) error
-	GetRecordByChat(ctx context.Context, chat Chat) ([]ChatRepoRecord, error)
+	RemoveRecord(ctx context.Context, chat_id int, repo_id int) error
+	GetRecordByChat(ctx context.Context, chat_id int) ([]ChatRepoRecord, error)
+	GetRecordByLink(ctx context.Context, link_id int) ([]ChatRepoRecord, error)
 	GetRecordById(ctx context.Context, id int) (*ChatRepoRecord, error)
 	GetRecordOffset(ctx context.Context, start int, limit int) ([]ChatRepoRecord, error)
 	GetRecordNumber(ctx context.Context) (int, error)

@@ -2,14 +2,10 @@ package storage
 
 import "time"
 
-type event string
-
-type Tag string
-
 const (
-	Commit      event = "commit"
-	Issue       event = "issue"
-	PullRequest event = "pull_request"
+	Commit      string = "commit"
+	Issue       string = "issue"
+	PullRequest string = "pull_request"
 )
 
 type Repo struct {
@@ -23,15 +19,14 @@ type Repo struct {
 }
 
 type Chat struct {
-	ID     int
 	ChatID int
 	Type   string
 }
 
 type ChatRepoRecord struct {
 	ID     int
-	Chat   Chat
-	Repo   Repo
-	Tags   []Tag
-	Events []event
+	Chat   *Chat
+	Repo   *Repo
+	Tags   []string
+	Events []string
 }

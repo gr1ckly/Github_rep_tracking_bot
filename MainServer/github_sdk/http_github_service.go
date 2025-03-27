@@ -2,6 +2,7 @@ package github_sdk
 
 import (
 	"Crypto_Bot/MainServer/custom_errors"
+	"Crypto_Bot/MainServer/server"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -80,4 +81,13 @@ func (ghService *HttpGithubService) GetPullRequests(repoName string, owner strin
 	data, err := ghService.fetch(repoName, owner, "commits")
 	err = json.Unmarshal(data, pullRequests)
 	return pullRequests, err
+}
+
+func (ghService *HttpGithubService) Check(link string) bool {
+	name, owner, err := server.ParseNameAndOwner(link)
+	if err != nil {
+		return false
+	}
+	_, err = ghService.fetch(name, owner, "")
+	return err == nil
 }

@@ -16,7 +16,7 @@ const (
 	UPDATE_REPO                = `UPDATE REPO
 SET NAME = $1,
     OWNER = $2,
-    LINK = $3
+    LINK = $3,
     LAST_COMMIT = $4,
     LAST_ISSUE = $5,
     LAST_PULL_REQUEST = $6
@@ -84,7 +84,7 @@ func (pr *PostgresRepoStore) AddNewRepo(ctx context.Context, repo *storage.Repo)
 	return id, err
 }
 
-func (pr *PostgresRepoStore) RemoveRepo(ctx context.Context, repo *storage.Repo) error {
+func (pr *PostgresRepoStore) RemoveRepo(ctx context.Context, id int) error {
 	conn, err := pr.pool.Acquire(ctx)
 	if err != nil {
 		return nil
@@ -92,7 +92,7 @@ func (pr *PostgresRepoStore) RemoveRepo(ctx context.Context, repo *storage.Repo)
 	defer conn.Release()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, REMOVE_REPO_NAME, repo.ID)
+	_, err = tx.Exec(ctx, REMOVE_REPO_NAME, id)
 	if err != nil {
 		return err
 	}

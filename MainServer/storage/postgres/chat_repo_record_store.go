@@ -14,13 +14,13 @@ const (
 	GET_OFFSET_CHAT_REPO_RECORD_NAME  = "get_offset_chat_repo_record"
 	GET_NUMBER_CHAT_REPO_RECORD_NAME  = "get_number_chat_repo_record"
 	UPDATE_CHAT_REPO_RECORD_NAME      = "update_chat_repo_record"
+	GET_BY_LINK_CHAT_REPO_RECORD_NAME = "get_by_link_chat_repo_record"
 )
 
 const (
 	ADD_CHAT_REPO_RECORD         = `INSERT INTO CHAT_REPO_RECORD(CHAT, REPO, TAGS, EVENTS) VALUES($1, $2, $3, $4) RETURN ID;`
-	REMOVE_CHAT_REPO_RECORD      = `DELETE FROM CHAT_REPO_RECORD WHERE ID=$1;`
+	REMOVE_CHAT_REPO_RECORD      = `DELETE FROM CHAT_REPO_RECORD WHERE CHAT=$1 and REPO = $2;`
 	GET_BY_CHAT_CHAT_REPO_RECORD = `SELECT cr.ID AS chat_repo_record_id,
-       c.ID as chat_db_id,
        c.CHAT_ID,
        c.TYPE AS chat_type,
        r.ID AS repo_id,
@@ -37,7 +37,6 @@ JOIN CHAT c ON cr.СHAT = c.CHAT_ID
 JOIN REPO r ON cr.REPO = r.ID
 WHERE c.CHAT_ID = $1;`
 	GET_BY_ID_CHAT_REPO_RECORD = `SELECT cr.ID AS chat_repo_record_id,
-       c.ID as chat_db_id,
        c.CHAT_ID,
        c.TYPE AS chat_type,
        r.ID AS repo_id,
@@ -53,8 +52,23 @@ FROM CHAT_REPO_RECORD cr
 JOIN CHAT c ON cr.СHAT = c.CHAT_ID
 JOIN REPO r ON cr.REPO = r.ID
 WHERE chat_repo_record_id = $1;`
+	GET_BY_LINK_CHAT_REPO_RECORD = `SELECT cr.ID AS chat_repo_record_id,
+       c.CHAT_ID,
+       c.TYPE AS chat_type,
+       r.ID AS repo_id,
+       r.NAME AS repo_name,
+       r.OWNER AS repo_owner,
+       r.LINK,
+       r.LAST_COMMIT,
+       r.LAST_ISSUE,
+       r.LAST_PULL_REQUEST,
+       cr.TAGS,
+       cr.EVENTS
+FROM CHAT_REPO_RECORD cr
+JOIN CHAT c ON cr.СHAT = c.CHAT_ID
+JOIN REPO r ON cr.REPO = r.ID
+WHERE r.LINK = $1;`
 	GET_OFFSET_CHAT_REPO_RECORD = `SELECT cr.ID AS chat_repo_record_id,
-       c.ID as chat_db_id,
        c.CHAT_ID,
        c.TYPE AS chat_type,
        r.ID AS repo_id,
@@ -91,6 +105,7 @@ var chatRepoRecordStatementMap = map[string]string{
 	GET_BY_ID_CHAT_REPO_RECORD_NAME:   GET_BY_ID_CHAT_REPO_RECORD,
 	GET_OFFSET_CHAT_REPO_RECORD_NAME:  GET_OFFSET_CHAT_REPO_RECORD,
 	GET_NUMBER_CHAT_REPO_RECORD_NAME:  GET_NUMBER_CHAT_REPO_RECORD,
+	GET_BY_LINK_CHAT_REPO_RECORD_NAME: GET_BY_LINK_CHAT_REPO_RECORD,
 	UPDATE_CHAT_REPO_RECORD_NAME:      UPDATE_CHAT_REPO_RECORD,
 }
 
@@ -135,7 +150,7 @@ func (ps *PostgresChatRepoRecordStore) AddNewRecord(ctx context.Context, record 
 	return id, err
 }
 
-func (ps *PostgresChatRepoRecordStore) RemoveRecord(ctx context.Context, record *storage.ChatRepoRecord) error {
+func (ps *PostgresChatRepoRecordStore) RemoveRecord(ctx context.Context, chat_id int, repo_id int) error {
 	conn, err := ps.pool.Acquire(ctx)
 	if err != nil {
 		return nil
@@ -143,7 +158,7 @@ func (ps *PostgresChatRepoRecordStore) RemoveRecord(ctx context.Context, record 
 	defer conn.Release()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, REMOVE_CHAT_REPO_RECORD_NAME, record.ID)
+	_, err = tx.Exec(ctx, REMOVE_CHAT_REPO_RECORD_NAME, chat_id, repo_id)
 	if err != nil {
 		return err
 	}
@@ -151,7 +166,7 @@ func (ps *PostgresChatRepoRecordStore) RemoveRecord(ctx context.Context, record 
 	return err
 }
 
-func (ps *PostgresChatRepoRecordStore) GetRecordByChat(ctx context.Context, chat storage.Chat) ([]storage.ChatRepoRecord, error) {
+func (ps *PostgresChatRepoRecordStore) GetRecordByChat(ctx context.Context, chat_id int) ([]storage.ChatRepoRecord, error) {
 	conn, err := ps.pool.Acquire(ctx)
 	if err != nil {
 		return nil, nil
@@ -159,13 +174,39 @@ func (ps *PostgresChatRepoRecordStore) GetRecordByChat(ctx context.Context, chat
 	defer conn.Release()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	row, err := tx.Query(ctx, GET_BY_CHAT_CHAT_REPO_RECORD_NAME, chat.ChatID)
+	row, err := tx.Query(ctx, GET_BY_CHAT_CHAT_REPO_RECORD_NAME, chat_id)
 	if err != nil {
 		return nil, err
 	}
 	answer := []storage.ChatRepoRecord{}
 	for row.Next() {
-		record := storage.ChatRepoRecord{Chat: storage.Chat{}, Repo: storage.Repo{}}
+		record := storage.ChatRepoRecord{Chat: &storage.Chat{}, Repo: &storage.Repo{}}
+		err = row.Scan(&record.ID, &record.Chat.ChatID, &record.Chat.Type, &record.Repo.ID, &record.Repo.Name, &record.Repo.Owner, &record.Repo.Link,
+			&record.Repo.LastCommit, &record.Repo.LastCommit, &record.Repo.LastIssue, &record.Repo.LastPR, &record.Tags, &record.Events)
+		if err != nil {
+			return nil, err
+		}
+		answer = append(answer, record)
+	}
+	err = tx.Commit(ctx)
+	return answer, err
+}
+
+func (ps *PostgresChatRepoRecordStore) GetRecordByLink(ctx context.Context, link_id int) ([]storage.ChatRepoRecord, error) {
+	conn, err := ps.pool.Acquire(ctx)
+	if err != nil {
+		return nil, nil
+	}
+	defer conn.Release()
+	tx, err := conn.Begin(ctx)
+	defer tx.Rollback(ctx)
+	row, err := tx.Query(ctx, GET_BY_LINK_CHAT_REPO_RECORD_NAME, link_id)
+	if err != nil {
+		return nil, err
+	}
+	answer := []storage.ChatRepoRecord{}
+	for row.Next() {
+		record := storage.ChatRepoRecord{Chat: &storage.Chat{}, Repo: &storage.Repo{}}
 		err = row.Scan(&record.ID, &record.Chat.ChatID, &record.Chat.Type, &record.Repo.ID, &record.Repo.Name, &record.Repo.Owner, &record.Repo.Link,
 			&record.Repo.LastCommit, &record.Repo.LastCommit, &record.Repo.LastIssue, &record.Repo.LastPR, &record.Tags, &record.Events)
 		if err != nil {
@@ -185,7 +226,7 @@ func (ps *PostgresChatRepoRecordStore) GetRecordById(ctx context.Context, id int
 	defer conn.Release()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	record := storage.ChatRepoRecord{Chat: storage.Chat{}, Repo: storage.Repo{}}
+	record := storage.ChatRepoRecord{Chat: &storage.Chat{}, Repo: &storage.Repo{}}
 	err = tx.QueryRow(ctx, GET_BY_ID_CHAT_REPO_RECORD_NAME, id).Scan(&record.ID, &record.Chat.ChatID, &record.Chat.Type, &record.Repo.ID, &record.Repo.Name, &record.Repo.Owner, &record.Repo.Link,
 		&record.Repo.LastCommit, &record.Repo.LastCommit, &record.Repo.LastIssue, &record.Repo.LastPR, &record.Tags, &record.Events)
 	if err != nil {
@@ -209,7 +250,7 @@ func (ps *PostgresChatRepoRecordStore) GetRecordOffset(ctx context.Context, star
 	}
 	answer := []storage.ChatRepoRecord{}
 	for row.Next() {
-		record := storage.ChatRepoRecord{Chat: storage.Chat{}, Repo: storage.Repo{}}
+		record := storage.ChatRepoRecord{Chat: &storage.Chat{}, Repo: &storage.Repo{}}
 		err = row.Scan(&record.ID, &record.Chat.ChatID, &record.Chat.Type, &record.Repo.ID, &record.Repo.Name, &record.Repo.Owner, &record.Repo.Link,
 			&record.Repo.LastCommit, &record.Repo.LastCommit, &record.Repo.LastIssue, &record.Repo.LastPR, &record.Tags, &record.Events)
 		if err != nil {

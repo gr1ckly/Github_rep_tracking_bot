@@ -1,4 +1,4 @@
-package main
+package server
 
 type ChatDTO struct {
 	ChatID int    `json:"chat_id"`
@@ -13,5 +13,9 @@ type RepoDTO struct {
 }
 
 type ErrorDTO struct {
-	error string
+	Error string `json:"error"`
+}
+
+type ResultDTO[T any] struct {
+	Result any `json:"result"`
 }
