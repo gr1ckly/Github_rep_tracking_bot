@@ -26,6 +26,7 @@ const (
        r.ID AS repo_id,
        r.NAME AS repo_name,
        r.OWNER AS repo_owner,
+       r.LINK,
        r.LAST_COMMIT,
        r.LAST_ISSUE,
        r.LAST_PULL_REQUEST,
@@ -42,6 +43,7 @@ WHERE c.CHAT_ID = $1;`
        r.ID AS repo_id,
        r.NAME AS repo_name,
        r.OWNER AS repo_owner,
+       r.LINK,
        r.LAST_COMMIT,
        r.LAST_ISSUE,
        r.LAST_PULL_REQUEST,
@@ -58,6 +60,7 @@ WHERE chat_repo_record_id = $1;`
        r.ID AS repo_id,
        r.NAME AS repo_name,
        r.OWNER AS repo_owner,
+       r.LINK,
        r.LAST_COMMIT,
        r.LAST_ISSUE,
        r.LAST_PULL_REQUEST,
@@ -163,7 +166,7 @@ func (ps *PostgresChatRepoRecordStore) GetRecordByChat(ctx context.Context, chat
 	answer := []storage.ChatRepoRecord{}
 	for row.Next() {
 		record := storage.ChatRepoRecord{Chat: storage.Chat{}, Repo: storage.Repo{}}
-		err = row.Scan(&record.ID, &record.Chat.ChatID, &record.Chat.Type, &record.Repo.ID, &record.Repo.Name, &record.Repo.Owner,
+		err = row.Scan(&record.ID, &record.Chat.ChatID, &record.Chat.Type, &record.Repo.ID, &record.Repo.Name, &record.Repo.Owner, &record.Repo.Link,
 			&record.Repo.LastCommit, &record.Repo.LastCommit, &record.Repo.LastIssue, &record.Repo.LastPR, &record.Tags, &record.Events)
 		if err != nil {
 			return nil, err
@@ -183,7 +186,7 @@ func (ps *PostgresChatRepoRecordStore) GetRecordById(ctx context.Context, id int
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	record := storage.ChatRepoRecord{Chat: storage.Chat{}, Repo: storage.Repo{}}
-	err = tx.QueryRow(ctx, GET_BY_ID_CHAT_REPO_RECORD_NAME, id).Scan(&record.ID, &record.Chat.ChatID, &record.Chat.Type, &record.Repo.ID, &record.Repo.Name, &record.Repo.Owner,
+	err = tx.QueryRow(ctx, GET_BY_ID_CHAT_REPO_RECORD_NAME, id).Scan(&record.ID, &record.Chat.ChatID, &record.Chat.Type, &record.Repo.ID, &record.Repo.Name, &record.Repo.Owner, &record.Repo.Link,
 		&record.Repo.LastCommit, &record.Repo.LastCommit, &record.Repo.LastIssue, &record.Repo.LastPR, &record.Tags, &record.Events)
 	if err != nil {
 		return nil, err
@@ -207,7 +210,7 @@ func (ps *PostgresChatRepoRecordStore) GetRecordOffset(ctx context.Context, star
 	answer := []storage.ChatRepoRecord{}
 	for row.Next() {
 		record := storage.ChatRepoRecord{Chat: storage.Chat{}, Repo: storage.Repo{}}
-		err = row.Scan(&record.ID, &record.Chat.ChatID, &record.Chat.Type, &record.Repo.ID, &record.Repo.Name, &record.Repo.Owner,
+		err = row.Scan(&record.ID, &record.Chat.ChatID, &record.Chat.Type, &record.Repo.ID, &record.Repo.Name, &record.Repo.Owner, &record.Repo.Link,
 			&record.Repo.LastCommit, &record.Repo.LastCommit, &record.Repo.LastIssue, &record.Repo.LastPR, &record.Tags, &record.Events)
 		if err != nil {
 			return nil, err

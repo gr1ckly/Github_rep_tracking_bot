@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	ADD_REPO                   = `INSERT INTO REPO(NAME, OWNER, LAST_COMMIT, LAST_ISSUE, LAST_PULL_REQUEST) VALUES ($1, $2, $3, $4, $5) RETURNING ID;`
+	ADD_REPO                   = `INSERT INTO REPO(NAME, OWNER, LINK, LAST_COMMIT, LAST_ISSUE, LAST_PULL_REQUEST) VALUES ($1, $2, $3, $4, $5, $6) RETURNING ID;`
 	REMOVE_REPO                = `DELETE FROM REPO WHERE ID = $1`
 	GET_BY_ID_REPO             = `SELECT * FROM REPO WHERE ID = $1`
 	GET_BY_OWNER_AND_NAME_REPO = `SELECT * FROM REPO WHERE NAME = $1 AND OWNER = $2;`
@@ -16,10 +16,11 @@ const (
 	UPDATE_REPO                = `UPDATE REPO
 SET NAME = $1,
     OWNER = $2,
-    LAST_COMMIT = $3,
-    LAST_ISSUE = $4,
-    LAST_PULL_REQUEST = $5
-WHERE id = $6;`
+    LINK = $3
+    LAST_COMMIT = $4,
+    LAST_ISSUE = $5,
+    LAST_PULL_REQUEST = $6
+WHERE id = $7;`
 )
 
 const (
@@ -75,7 +76,7 @@ func (pr *PostgresRepoStore) AddNewRepo(ctx context.Context, repo *storage.Repo)
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	var id int
-	err = tx.QueryRow(ctx, ADD_REPO_NAME, repo.Name, repo.Owner, repo.LastCommit, repo.LastIssue, repo.LastPR).Scan(&id)
+	err = tx.QueryRow(ctx, ADD_REPO_NAME, repo.Name, repo.Owner, repo.Link, repo.LastCommit, repo.LastIssue, repo.LastPR).Scan(&id)
 	if err != nil {
 		return -1, err
 	}
@@ -108,7 +109,7 @@ func (pr *PostgresRepoStore) GetRepoByID(ctx context.Context, id int) (*storage.
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	repo := storage.Repo{}
-	err = tx.QueryRow(ctx, GET_BY_ID_REPO_NAME, id).Scan(&repo.ID, &repo.Name, &repo.Owner, repo.LastCommit, repo.LastIssue, repo.LastPR)
+	err = tx.QueryRow(ctx, GET_BY_ID_REPO_NAME, id).Scan(&repo.ID, &repo.Name, &repo.Owner, &repo.Link, &repo.LastCommit, &repo.LastIssue, &repo.LastPR)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +126,7 @@ func (pr *PostgresRepoStore) GetRepoByOwnerAndName(ctx context.Context, owner st
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	repo := storage.Repo{}
-	err = tx.QueryRow(ctx, GET_BY_ID_REPO_NAME, name, owner).Scan(&repo.ID, &repo.Name, &repo.Owner, repo.LastCommit, repo.LastIssue, repo.LastPR)
+	err = tx.QueryRow(ctx, GET_BY_ID_REPO_NAME, name, owner).Scan(&repo.ID, &repo.Name, &repo.Owner, &repo.Link, &repo.LastCommit, &repo.LastIssue, &repo.LastPR)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +149,7 @@ func (pr *PostgresRepoStore) GetReposOffset(ctx context.Context, start int, limi
 	answer := []storage.Repo{}
 	for row.Next() {
 		repo := storage.Repo{}
-		err = row.Scan(&repo.ID, &repo.Name, &repo.Owner, repo.LastCommit, repo.LastIssue, repo.LastPR)
+		err = row.Scan(&repo.ID, &repo.Name, &repo.Owner, &repo.Link, &repo.LastCommit, &repo.LastIssue, &repo.LastPR)
 		if err != nil {
 			return nil, err
 		}
@@ -183,7 +184,7 @@ func (pr *PostgresRepoStore) UpdateRepo(ctx context.Context, repo *storage.Repo)
 	defer conn.Release()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, UPDATE_REPO_NAME, repo.Name, repo.Owner, repo.LastCommit, repo.LastIssue, repo.LastPR, repo.ID)
+	_, err = tx.Exec(ctx, UPDATE_REPO_NAME, repo.Name, repo.Owner, repo.Link, repo.LastCommit, repo.LastIssue, repo.LastPR, repo.ID)
 	if err != nil {
 		return err
 	}

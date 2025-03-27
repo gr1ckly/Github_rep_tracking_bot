@@ -16,6 +16,7 @@ type Repo struct {
 	ID         int
 	Name       string
 	Owner      string
+	Link       string
 	LastCommit time.Time
 	LastIssue  time.Time
 	LastPR     time.Time
