@@ -4,6 +4,7 @@ import (
 	"Crypto_Bot/MainServer/storage"
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"time"
 )
 
 const (
@@ -76,7 +77,7 @@ func (pr *PostgresRepoStore) AddNewRepo(ctx context.Context, repo *storage.Repo)
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	var id int
-	err = tx.QueryRow(ctx, ADD_REPO_NAME, repo.Name, repo.Owner, repo.Link, repo.LastCommit, repo.LastIssue, repo.LastPR).Scan(&id)
+	err = tx.QueryRow(ctx, ADD_REPO_NAME, repo.Name, repo.Owner, repo.Link, repo.LastCommit.Format(time.RFC3339), repo.LastIssue.Format(time.RFC3339), repo.LastPR.Format(time.RFC3339)).Scan(&id)
 	if err != nil {
 		return -1, err
 	}
@@ -184,7 +185,7 @@ func (pr *PostgresRepoStore) UpdateRepo(ctx context.Context, repo *storage.Repo)
 	defer conn.Release()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, UPDATE_REPO_NAME, repo.Name, repo.Owner, repo.Link, repo.LastCommit, repo.LastIssue, repo.LastPR, repo.ID)
+	_, err = tx.Exec(ctx, UPDATE_REPO_NAME, repo.Name, repo.Owner, repo.Link, repo.LastCommit.Format(time.RFC3339), repo.LastIssue.Format(time.RFC3339), repo.LastPR.Format(time.RFC3339), repo.ID)
 	if err != nil {
 		return err
 	}

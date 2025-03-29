@@ -1,6 +1,7 @@
 package server
 
 import (
+	"Crypto_Bot/MainServer/server/dtos"
 	"Crypto_Bot/MainServer/storage"
 	"context"
 	"time"
@@ -36,7 +37,7 @@ func (sm *StoreManager) GetReposByChat(ctx context.Context, chatId int) ([]stora
 	return sm.chatRepoRecordStore.GetRecordByChat(ctx, chatId)
 }
 
-func (sm *StoreManager) AddRepo(ctx context.Context, repo *storage.Repo, repoDto *RepoDTO) (int, error) {
+func (sm *StoreManager) AddRepo(ctx context.Context, repo *storage.Repo, repoDto *dtos.RepoDTO) (int, error) {
 	var id int
 	needToUpdate := false
 	oldRepo, err := sm.repoStore.GetRepoByOwnerAndName(ctx, repo.Owner, repo.Name)
@@ -70,7 +71,7 @@ func (sm *StoreManager) AddRepo(ctx context.Context, repo *storage.Repo, repoDto
 	if err != nil {
 		return -1, nil
 	}
-	record, err := ParseChatRepoRecord(repoDto, chat, oldRepo)
+	record, err := dtos.ParseChatRepoRecord(repoDto, chat, oldRepo)
 	if err != nil {
 		return -1, err
 	}

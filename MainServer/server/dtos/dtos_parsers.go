@@ -1,4 +1,4 @@
-package server
+package dtos
 
 import (
 	"Crypto_Bot/MainServer/custom_errors"

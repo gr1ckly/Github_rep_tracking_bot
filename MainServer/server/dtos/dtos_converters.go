@@ -1,6 +1,8 @@
-package server
+package dtos
 
-import "Crypto_Bot/MainServer/storage"
+import (
+	"Crypto_Bot/MainServer/storage"
+)
 
 func ConvertRepoDTO(record *storage.ChatRepoRecord) (*RepoDTO, error) {
 	ans := &RepoDTO{}

@@ -36,7 +36,7 @@ type Issue struct {
 	ActiveLockReason  string          `json:"active_lock_reason"`
 	Comments          int             `json:"comments"`
 	PullRequest       PullRequestInfo `json:"pull_request"`
-	ClosedAt          *time.Time      `json:"closed_at"`
+	ClosedAt          time.Time       `json:"closed_at"`
 	CreatedAt         time.Time       `json:"created_at"`
 	UpdatedAt         time.Time       `json:"updated_at"`
 	ClosedBy          User            `json:"closed_by"`
@@ -45,49 +45,49 @@ type Issue struct {
 }
 
 type PullRequest struct {
-	ID                  int        `json:"id"`
-	NodeID              string     `json:"node_id"`
-	URL                 string     `json:"url"`
-	HTMLURL             string     `json:"html_url"`
-	DiffURL             string     `json:"diff_url"`
-	PatchURL            string     `json:"patch_url"`
-	IssueURL            string     `json:"issue_url"`
-	CommitsURL          string     `json:"commits_url"`
-	ReviewCommentsURL   string     `json:"review_comments_url"`
-	ReviewCommentURL    string     `json:"review_comment_url"`
-	CommentsURL         string     `json:"comments_url"`
-	StatusesURL         string     `json:"statuses_url"`
-	Number              int        `json:"number"`
-	State               string     `json:"state"`
-	Title               string     `json:"title"`
-	Body                string     `json:"body"`
-	User                User       `json:"user"`
-	Labels              []Label    `json:"labels"`
-	Assignee            *User      `json:"assignee"`
-	Assignees           []User     `json:"assignees"`
-	Milestone           *Milestone `json:"milestone"`
-	Locked              bool       `json:"locked"`
-	ActiveLockReason    string     `json:"active_lock_reason"`
-	CreatedAt           string     `json:"created_at"`
-	UpdatedAt           string     `json:"updated_at"`
-	ClosedAt            *string    `json:"closed_at"`
-	MergedAt            *string    `json:"merged_at"`
-	MergeCommitSHA      *string    `json:"merge_commit_sha"`
-	AuthorAssociation   string     `json:"author_association"`
-	Draft               bool       `json:"draft"`
-	Head                Branch     `json:"head"`
-	Base                Branch     `json:"base"`
-	Merged              bool       `json:"merged"`
-	Mergeable           *bool      `json:"mergeable"`
-	Rebaseable          *bool      `json:"rebaseable"`
-	MergeableState      string     `json:"mergeable_state"`
-	Comments            int        `json:"comments"`
-	ReviewComments      int        `json:"review_comments"`
-	MaintainerCanModify bool       `json:"maintainer_can_modify"`
-	Commits             int        `json:"commits"`
-	Additions           int        `json:"additions"`
-	Deletions           int        `json:"deletions"`
-	ChangedFiles        int        `json:"changed_files"`
+	ID                  int       `json:"id"`
+	NodeID              string    `json:"node_id"`
+	URL                 string    `json:"url"`
+	HTMLURL             string    `json:"html_url"`
+	DiffURL             string    `json:"diff_url"`
+	PatchURL            string    `json:"patch_url"`
+	IssueURL            string    `json:"issue_url"`
+	CommitsURL          string    `json:"commits_url"`
+	ReviewCommentsURL   string    `json:"review_comments_url"`
+	ReviewCommentURL    string    `json:"review_comment_url"`
+	CommentsURL         string    `json:"comments_url"`
+	StatusesURL         string    `json:"statuses_url"`
+	Number              int       `json:"number"`
+	State               string    `json:"state"`
+	Title               string    `json:"title"`
+	Body                string    `json:"body"`
+	User                User      `json:"user"`
+	Labels              []Label   `json:"labels"`
+	Assignee            User      `json:"assignee"`
+	Assignees           []User    `json:"assignees"`
+	Milestone           Milestone `json:"milestone"`
+	Locked              bool      `json:"locked"`
+	ActiveLockReason    string    `json:"active_lock_reason"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
+	ClosedAt            time.Time `json:"closed_at"`
+	MergedAt            time.Time `json:"merged_at"`
+	MergeCommitSHA      string    `json:"merge_commit_sha"`
+	AuthorAssociation   string    `json:"author_association"`
+	Draft               bool      `json:"draft"`
+	Head                Branch    `json:"head"`
+	Base                Branch    `json:"base"`
+	Merged              bool      `json:"merged"`
+	Mergeable           bool      `json:"mergeable"`
+	Rebaseable          bool      `json:"rebaseable"`
+	MergeableState      string    `json:"mergeable_state"`
+	Comments            int       `json:"comments"`
+	ReviewComments      int       `json:"review_comments"`
+	MaintainerCanModify bool      `json:"maintainer_can_modify"`
+	Commits             int       `json:"commits"`
+	Additions           int       `json:"additions"`
+	Deletions           int       `json:"deletions"`
+	ChangedFiles        int       `json:"changed_files"`
 }
 
 type CommitInfo struct {
@@ -144,19 +144,19 @@ type Label struct {
 }
 
 type Milestone struct {
-	ID           int        `json:"id"`
-	NodeID       string     `json:"node_id"`
-	Number       int        `json:"number"`
-	State        string     `json:"state"`
-	Title        string     `json:"title"`
-	Description  string     `json:"description"`
-	Creator      User       `json:"creator"`
-	OpenIssues   int        `json:"open_issues"`
-	ClosedIssues int        `json:"closed_issues"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-	ClosedAt     *time.Time `json:"closed_at"`
-	DueOn        *time.Time `json:"due_on"`
+	ID           int       `json:"id"`
+	NodeID       string    `json:"node_id"`
+	Number       int       `json:"number"`
+	State        string    `json:"state"`
+	Title        string    `json:"title"`
+	Description  string    `json:"description"`
+	Creator      User      `json:"creator"`
+	OpenIssues   int       `json:"open_issues"`
+	ClosedIssues int       `json:"closed_issues"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	ClosedAt     time.Time `json:"closed_at"`
+	DueOn        time.Time `json:"due_on"`
 }
 
 type PullRequestInfo struct {
