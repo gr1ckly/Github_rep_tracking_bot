@@ -2,37 +2,37 @@ package dtos
 
 import (
 	"Crypto_Bot/MainServer/github_sdk"
+	"Crypto_Bot/MainServer/storage"
 )
 
-func ConvertCommit(commit *github_sdk.Commit, chatId int) CommitChangesDTO {
-	return CommitChangesDTO{
-		ChatId:   chatId,
-		Link:     commit.URL,
-		Author:   commit.Commit.Author.Name,
-		Commiter: commit.Commit.Committer.Name,
-		Message:  commit.Commit.Message,
-		Branch:   commit.Commit.Tree.URL,
+func ConvertCommit(commit *github_sdk.Commit, chatId int) ChangingDTO {
+	return ChangingDTO{
+		ChatId: chatId,
+		Link:   commit.URL,
+		Event:  storage.Commit,
+		Author: commit.Commit.Author.Name,
+		Title:  commit.Commit.Message,
 	}
 }
 
-func ConvertIssue(issue *github_sdk.Issue, chatId int) IssueChangesSTO {
-	return IssueChangesSTO{
+func ConvertIssue(issue *github_sdk.Issue, chatId int) ChangingDTO {
+	return ChangingDTO{
 		ChatId:    chatId,
 		Link:      issue.URL,
+		Event:     storage.Issue,
 		Author:    issue.User.Login,
 		Title:     issue.Title,
 		UpdatedAt: issue.UpdatedAt,
 	}
 }
 
-func ConvertPR(pr *github_sdk.PullRequest, chatId int) PullRequestChangesDTO {
-	return PullRequestChangesDTO{
+func ConvertPR(pr *github_sdk.PullRequest, chatId int) ChangingDTO {
+	return ChangingDTO{
 		ChatId:    chatId,
 		Link:      pr.URL,
+		Event:     storage.PullRequest,
 		Author:    pr.User.Login,
-		Number:    pr.Number,
 		Title:     pr.Title,
-		Status:    pr.State,
 		UpdatedAt: pr.UpdatedAt,
 	}
 }
