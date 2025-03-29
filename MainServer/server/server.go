@@ -1,14 +1,19 @@
 package server
 
 import (
+	dtos2 "Crypto_Bot/MainServer/server/dtos"
 	"Crypto_Bot/MainServer/server/validators"
 	"context"
 	"encoding/json"
 	mux2 "github.com/gorilla/mux"
+	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
+
+var logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
 
 type Server struct {
 	serverUrl    string
@@ -29,44 +34,49 @@ func (serv *Server) handleGetChats(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	chats, err := serv.storeManager.GetChats(context.Background())
 	if err != nil {
-		errDto := ErrorDTO{err.Error()}
+		errDto := dtos2.ErrorDTO{err.Error()}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 500, w)
 	}
-	dtos := make([]*ChatDTO, len(chats))
+	dtos := make([]*dtos2.ChatDTO, len(chats))
 	for idx, chat := range chats {
-		conv, err := ConvertChatDTO(&chat)
+		conv, err := dtos2.ConvertChatDTO(&chat)
 		if err != nil {
-			errDto := ErrorDTO{err.Error()}
+			errDto := dtos2.ErrorDTO{err.Error()}
+			logger.Error(err.Error())
 			serv.sendAns(errDto, 500, w)
 		}
 		dtos[idx] = conv
 	}
-	result := ResultDTO[[]*ChatDTO]{dtos}
+	result := dtos2.ResultDTO[[]*dtos2.ChatDTO]{dtos}
 	serv.sendAns(result, 200, w)
 }
 
 func (serv *Server) handleAddChat(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
-	var chatDto ChatDTO
+	var chatDto dtos2.ChatDTO
 	err := json.NewDecoder(req.Body).Decode(&chatDto)
 	if err != nil {
-		errDto := ErrorDTO{"Invalid JSON"}
+		errDto := dtos2.ErrorDTO{"Invalid JSON"}
+		logger.Error("Invalid chat_id format " + err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
-	newChat, err := ParseChat(chatDto)
+	newChat, err := dtos2.ParseChat(chatDto)
 	if err != nil {
-		errDto := ErrorDTO{err.Error()}
+		errDto := dtos2.ErrorDTO{err.Error()}
+		logger.Error("Error of parsing chat " + err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
 	id, err := serv.storeManager.AddChat(context.Background(), newChat)
 	if err != nil {
-		errDto := ErrorDTO{err.Error()}
+		errDto := dtos2.ErrorDTO{err.Error()}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 500, w)
 		return
 	}
-	resultDto := ResultDTO[int]{id}
+	resultDto := dtos2.ResultDTO[int]{id}
 	serv.sendAns(resultDto, 200, w)
 }
 
@@ -74,13 +84,15 @@ func (serv *Server) handleDeleteChat(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	chatId, err := strconv.Atoi(strings.TrimSpace(req.URL.Query().Get("chat_id")))
 	if err != nil {
-		errDto := ErrorDTO{"Invalid chat_id format"}
+		errDto := dtos2.ErrorDTO{"Invalid chat_id format"}
+		logger.Error("Invalid chat_id format " + err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
 	err = serv.storeManager.DeleteChat(context.Background(), chatId)
 	if err != nil {
-		errDto := ErrorDTO{err.Error()}
+		errDto := dtos2.ErrorDTO{err.Error()}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 500, w)
 		return
 	}
@@ -91,56 +103,63 @@ func (serv *Server) handleGetRepos(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	chatId, err := strconv.Atoi(strings.TrimSpace(req.URL.Query().Get("chat_id")))
 	if err != nil {
-		errDto := ErrorDTO{"Invalid chat_id format"}
+		errDto := dtos2.ErrorDTO{"Invalid chat_id format"}
+		logger.Error("Invalid chat_id format " + err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
 	records, err := serv.storeManager.GetReposByChat(context.Background(), chatId)
 	if err != nil {
-		errDto := ErrorDTO{err.Error()}
+		errDto := dtos2.ErrorDTO{err.Error()}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 500, w)
 		return
 	}
-	ans := make([]*RepoDTO, len(records))
+	ans := make([]*dtos2.RepoDTO, len(records))
 	for idx, record := range records {
-		conv, err := ConvertRepoDTO(&record)
+		conv, err := dtos2.ConvertRepoDTO(&record)
 		if err != nil {
-			errDto := ErrorDTO{err.Error()}
+			errDto := dtos2.ErrorDTO{err.Error()}
+			logger.Error(err.Error())
 			serv.sendAns(errDto, 500, w)
 		}
 		ans[idx] = conv
 	}
-	resultDto := ResultDTO[[]*RepoDTO]{ans}
+	resultDto := dtos2.ResultDTO[[]*dtos2.RepoDTO]{ans}
 	serv.sendAns(resultDto, 200, w)
 }
 
 func (serv *Server) handleAddRepo(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
-	var repoDto RepoDTO
+	var repoDto dtos2.RepoDTO
 	err := json.NewDecoder(req.Body).Decode(&repoDto)
 	if err != nil {
-		errDto := ErrorDTO{"Invalid JSON"}
+		errDto := dtos2.ErrorDTO{"Invalid JSON"}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
 	if !serv.urlValidator.Check(repoDto.Link) {
-		errDto := ErrorDTO{"Invalid link"}
+		errDto := dtos2.ErrorDTO{"Invalid link"}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
-	repo, err := ParseRepo(repoDto)
+	repo, err := dtos2.ParseRepo(repoDto)
 	if err != nil {
-		errDto := ErrorDTO{err.Error()}
+		errDto := dtos2.ErrorDTO{err.Error()}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
 	id, err := serv.storeManager.AddRepo(context.Background(), repo, &repoDto)
 	if err != nil {
-		errDto := ErrorDTO{err.Error()}
+		errDto := dtos2.ErrorDTO{err.Error()}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 500, w)
 		return
 	}
-	ans := ResultDTO[int]{id}
+	ans := dtos2.ResultDTO[int]{id}
 	serv.sendAns(ans, 200, w)
 }
 
@@ -148,25 +167,29 @@ func (serv *Server) handleDeleteRepo(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	chatID, err := strconv.Atoi(req.URL.Query().Get("chat_id"))
 	if err != nil {
-		errDto := ErrorDTO{"Invalid chat_id"}
+		errDto := dtos2.ErrorDTO{"Invalid chat_id"}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
 	rawLink := req.URL.Query().Get("link")
 	if rawLink == "" {
-		errDto := ErrorDTO{"Invalid link"}
+		errDto := dtos2.ErrorDTO{"Invalid link"}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
-	name, owner, err := ParseNameAndOwner(rawLink)
+	name, owner, err := dtos2.ParseNameAndOwner(rawLink)
 	if err != nil {
-		errDto := ErrorDTO{err.Error()}
+		errDto := dtos2.ErrorDTO{err.Error()}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
 	err = serv.storeManager.DeleteRepo(context.Background(), chatID, owner, name)
 	if err != nil {
-		errDto := ErrorDTO{err.Error()}
+		errDto := dtos2.ErrorDTO{err.Error()}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 500, w)
 		return
 	}
@@ -177,33 +200,37 @@ func (serv *Server) handleGetReposByTag(w http.ResponseWriter, req *http.Request
 	defer req.Body.Close()
 	chat_id, err := strconv.Atoi(req.URL.Query().Get("chat_id"))
 	if err != nil {
-		errDto := ErrorDTO{"Invalid chat_id"}
+		errDto := dtos2.ErrorDTO{"Invalid chat_id"}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
 	tag := req.URL.Query().Get("tag")
 	if tag == "" {
-		errDto := ErrorDTO{"Invalid tag"}
+		errDto := dtos2.ErrorDTO{"Invalid tag"}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
 	records, err := serv.storeManager.GetReposByTag(context.Background(), chat_id, tag)
 	if err != nil {
-		errDto := ErrorDTO{err.Error()}
+		errDto := dtos2.ErrorDTO{err.Error()}
+		logger.Error(err.Error())
 		serv.sendAns(errDto, 500, w)
 		return
 	}
-	ans := make([]*RepoDTO, len(records))
+	ans := make([]*dtos2.RepoDTO, len(records))
 	for idx, record := range records {
-		conv, err := ConvertRepoDTO(record)
+		conv, err := dtos2.ConvertRepoDTO(record)
 		if err != nil {
-			errDto := ErrorDTO{err.Error()}
+			errDto := dtos2.ErrorDTO{err.Error()}
+			logger.Error(err.Error())
 			serv.sendAns(errDto, 500, w)
 			return
 		}
 		ans[idx] = conv
 	}
-	result := ResultDTO[[]*RepoDTO]{ans}
+	result := dtos2.ResultDTO[[]*dtos2.RepoDTO]{ans}
 	serv.sendAns(result, 200, w)
 }
 

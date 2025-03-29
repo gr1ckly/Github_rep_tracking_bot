@@ -18,7 +18,7 @@ const (
 )
 
 const (
-	ADD_CHAT_REPO_RECORD         = `INSERT INTO CHAT_REPO_RECORD(CHAT, REPO, TAGS, EVENTS) VALUES($1, $2, $3, $4) RETURN ID;`
+	ADD_CHAT_REPO_RECORD         = `INSERT INTO CHAT_REPO_RECORD(CHAT, REPO, TAGS, EVENTS) VALUES($1, $2, $3, $4) RETURNING ID;`
 	REMOVE_CHAT_REPO_RECORD      = `DELETE FROM CHAT_REPO_RECORD WHERE CHAT=$1 and REPO = $2;`
 	GET_BY_CHAT_CHAT_REPO_RECORD = `SELECT cr.ID AS chat_repo_record_id,
        c.CHAT_ID,
@@ -33,7 +33,7 @@ const (
        cr.TAGS,
        cr.EVENTS
 FROM CHAT_REPO_RECORD cr
-JOIN CHAT c ON cr.СHAT = c.CHAT_ID
+JOIN CHAT c ON cr.chat = c.CHAT_ID
 JOIN REPO r ON cr.REPO = r.ID
 WHERE c.CHAT_ID = $1;`
 	GET_BY_ID_CHAT_REPO_RECORD = `SELECT cr.ID AS chat_repo_record_id,
@@ -49,9 +49,9 @@ WHERE c.CHAT_ID = $1;`
        cr.TAGS,
        cr.EVENTS
 FROM CHAT_REPO_RECORD cr
-JOIN CHAT c ON cr.СHAT = c.CHAT_ID
+JOIN CHAT c ON cr.chat = c.CHAT_ID
 JOIN REPO r ON cr.REPO = r.ID
-WHERE chat_repo_record_id = $1;`
+WHERE cr.ID = $1;`
 	GET_BY_LINK_CHAT_REPO_RECORD = `SELECT cr.ID AS chat_repo_record_id,
        c.CHAT_ID,
        c.TYPE AS chat_type,
@@ -65,7 +65,7 @@ WHERE chat_repo_record_id = $1;`
        cr.TAGS,
        cr.EVENTS
 FROM CHAT_REPO_RECORD cr
-JOIN CHAT c ON cr.СHAT = c.CHAT_ID
+JOIN CHAT c ON cr.chat = c.CHAT_ID
 JOIN REPO r ON cr.REPO = r.ID
 WHERE r.LINK = $1;`
 	GET_OFFSET_CHAT_REPO_RECORD = `SELECT cr.ID AS chat_repo_record_id,
@@ -81,7 +81,7 @@ WHERE r.LINK = $1;`
        cr.TAGS,
        cr.EVENTS
 FROM CHAT_REPO_RECORD cr
-JOIN CHAT c ON cr.СHAT = c.CHAT_ID
+JOIN CHAT c ON cr.chat = c.CHAT_ID
 JOIN REPO r ON cr.REPO = r.ID
 ORDER BY chat_repo_record_id
 OFFSET $1 LIMIT $2;`

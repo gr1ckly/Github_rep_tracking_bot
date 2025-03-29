@@ -1,4 +1,4 @@
-package server
+package dtos
 
 type ChatDTO struct {
 	ChatID int    `json:"chat_id"`

@@ -2,10 +2,11 @@ package github_sdk
 
 import (
 	"Crypto_Bot/MainServer/custom_errors"
-	"Crypto_Bot/MainServer/server"
+	"Crypto_Bot/MainServer/server/dtos"
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 )
@@ -30,7 +31,7 @@ func (ghService *HttpGithubService) setHeaders(req *http.Request) {
 	req.Header.Set("X-GitHub-Api-Version", ghService.apiVersion)
 }
 
-func (ghService *HttpGithubService) fetch(repoName string, owner string, way string) ([]byte, error) {
+func (ghService *HttpGithubService) fetch(repoName string, owner string, way string, since *time.Time) ([]byte, error) {
 	ghService.apiUrlMutex.RLock()
 	req, err := http.NewRequest("GET", ghService.apiUrl+"/repos/"+owner+"/"+repoName+"/"+way, nil)
 	ghService.apiUrlMutex.RUnlock()
@@ -38,56 +39,61 @@ func (ghService *HttpGithubService) fetch(repoName string, owner string, way str
 		return nil, err
 	}
 	ghService.setHeaders(req)
+	if since != nil {
+		params := url.Values{} // (2)
+		params.Add("since", since.Format(time.RFC3339))
+		req.URL.RawQuery = params.Encode()
+	}
 	resp, err := ghService.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode == 301 {
 		ghService.apiUrl = resp.Header.Get("Location")
-		return ghService.fetch(repoName, owner, way)
+		return ghService.fetch(repoName, owner, way, since)
 	}
 	if resp.StatusCode == 302 || resp.StatusCode == 307 {
 		prev := ghService.apiUrl
 		ghService.apiUrlMutex.Lock()
 		ghService.apiUrl = resp.Header.Get("Location")
 		ghService.apiUrlMutex.Unlock()
-		ans, err := ghService.fetch(repoName, owner, way)
+		ans, err := ghService.fetch(repoName, owner, way, since)
 		ghService.apiUrlMutex.Lock()
 		ghService.apiUrl = prev
 		ghService.apiUrlMutex.Unlock()
 		return ans, err
 	}
 	if resp.StatusCode/100 != 2 {
-		return nil, custom_errors.StatusError{resp.StatusCode, resp.Status}
+		return nil, custom_errors.StatusError{resp.StatusCode, resp.Status, resp.Request.RequestURI}
 	}
 	defer resp.Body.Close()
 	return io.ReadAll(resp.Body)
 }
 
-func (ghService *HttpGithubService) GetCommits(repoName string, owner string) ([]Commit, error) {
+func (ghService *HttpGithubService) GetCommits(repoName string, owner string, since time.Time) ([]Commit, error) {
 	var commits []Commit
-	data, err := ghService.fetch(repoName, owner, "commits")
+	data, err := ghService.fetch(repoName, owner, "commits", &since)
 	err = json.Unmarshal(data, commits)
 	return commits, err
 }
-func (ghService *HttpGithubService) GetIssues(repoName string, owner string) ([]Issue, error) {
+func (ghService *HttpGithubService) GetIssues(repoName string, owner string, since time.Time) ([]Issue, error) {
 	var issues []Issue
-	data, err := ghService.fetch(repoName, owner, "commits")
+	data, err := ghService.fetch(repoName, owner, "commits", &since)
 	err = json.Unmarshal(data, issues)
 	return issues, err
 }
-func (ghService *HttpGithubService) GetPullRequests(repoName string, owner string) ([]PullRequest, error) {
+func (ghService *HttpGithubService) GetPullRequests(repoName string, owner string, since time.Time) ([]PullRequest, error) {
 	var pullRequests []PullRequest
-	data, err := ghService.fetch(repoName, owner, "commits")
+	data, err := ghService.fetch(repoName, owner, "commits", &since)
 	err = json.Unmarshal(data, pullRequests)
 	return pullRequests, err
 }
 
 func (ghService *HttpGithubService) Check(link string) bool {
-	name, owner, err := server.ParseNameAndOwner(link)
+	name, owner, err := dtos.ParseNameAndOwner(link)
 	if err != nil {
 		return false
 	}
-	_, err = ghService.fetch(name, owner, "")
+	_, err = ghService.fetch(name, owner, "", nil)
 	return err == nil
 }
