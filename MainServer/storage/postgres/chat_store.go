@@ -4,6 +4,7 @@ import (
 	"Crypto_Bot/MainServer/storage"
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"time"
 )
 
 const (
@@ -36,15 +37,20 @@ var chatStatementMap = map[string]string{
 }
 
 type PostgresChatStore struct {
-	pool *pgxpool.Pool
+	pool    *pgxpool.Pool
+	timeout int
 }
 
-func NewPostgresChatStore(ctx context.Context, dbUrl string) (*PostgresChatStore, error) {
+func NewPostgresChatStore(timeout int, dbUrl string) (*PostgresChatStore, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
 	pool, err := pgxpool.New(ctx, dbUrl)
 	if err != nil {
 		return nil, err
 	}
-	err = pool.AcquireFunc(ctx, func(conn *pgxpool.Conn) error {
+	initCtx, initCancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer initCancel()
+	err = pool.AcquireFunc(initCtx, func(conn *pgxpool.Conn) error {
 		for key, _ := range chatStatementMap {
 			_, stmtErr := conn.Conn().Prepare(context.Background(), key, chatStatementMap[key])
 			if stmtErr != nil {
@@ -56,15 +62,17 @@ func NewPostgresChatStore(ctx context.Context, dbUrl string) (*PostgresChatStore
 	if err != nil {
 		return nil, err
 	}
-	return &PostgresChatStore{pool: pool}, nil
+	return &PostgresChatStore{pool: pool, timeout: timeout}, nil
 }
 
-func (pc *PostgresChatStore) AddNewChat(ctx context.Context, chat *storage.Chat) (int, error) {
-	conn, err := pc.pool.Acquire(ctx)
+func (pc *PostgresChatStore) AddNewChat(chat *storage.Chat) (int, error) {
+	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
 		return -1, nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	_, err = tx.Exec(ctx, ADD_CHAT_NAME, chat.ChatID, chat.Type)
@@ -75,12 +83,14 @@ func (pc *PostgresChatStore) AddNewChat(ctx context.Context, chat *storage.Chat)
 	return chat.ChatID, err
 }
 
-func (pc *PostgresChatStore) RemoveChat(ctx context.Context, id int) error {
-	conn, err := pc.pool.Acquire(ctx)
+func (pc *PostgresChatStore) RemoveChat(id int) error {
+	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
 		return nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	_, err = tx.Exec(ctx, REMOVE_CHAT_NAME, id)
@@ -91,12 +101,14 @@ func (pc *PostgresChatStore) RemoveChat(ctx context.Context, id int) error {
 	return err
 }
 
-func (pc *PostgresChatStore) GetChatByID(ctx context.Context, id int) (*storage.Chat, error) {
-	conn, err := pc.pool.Acquire(ctx)
+func (pc *PostgresChatStore) GetChatByID(id int) (*storage.Chat, error) {
+	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
 		return nil, nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	chat := storage.Chat{}
@@ -108,12 +120,14 @@ func (pc *PostgresChatStore) GetChatByID(ctx context.Context, id int) (*storage.
 	return &chat, err
 }
 
-func (pc *PostgresChatStore) GetChatsOffset(ctx context.Context, start int, limit int) ([]storage.Chat, error) {
-	conn, err := pc.pool.Acquire(ctx)
+func (pc *PostgresChatStore) GetChatsOffset(start int, limit int) ([]storage.Chat, error) {
+	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
 		return nil, nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	row, err := tx.Query(ctx, GET_CHATS_OFFSET_NAME, start, limit)
@@ -133,12 +147,14 @@ func (pc *PostgresChatStore) GetChatsOffset(ctx context.Context, start int, limi
 	return answer, err
 }
 
-func (pc *PostgresChatStore) GetChatNumber(ctx context.Context) (int, error) {
-	conn, err := pc.pool.Acquire(ctx)
+func (pc *PostgresChatStore) GetChatNumber() (int, error) {
+	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
 		return -1, nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	var number int
@@ -150,12 +166,14 @@ func (pc *PostgresChatStore) GetChatNumber(ctx context.Context) (int, error) {
 	return number, err
 }
 
-func (pc *PostgresChatStore) UpdateChat(ctx context.Context, chat *storage.Chat) error {
-	conn, err := pc.pool.Acquire(ctx)
+func (pc *PostgresChatStore) UpdateChat(chat *storage.Chat) error {
+	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
 		return nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	_, err = tx.Exec(ctx, UPDATE_CHAT_NAME, chat.Type, chat.ChatID)

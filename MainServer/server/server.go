@@ -3,7 +3,6 @@ package server
 import (
 	dtos2 "Crypto_Bot/MainServer/server/dtos"
 	"Crypto_Bot/MainServer/server/validators"
-	"context"
 	"encoding/json"
 	mux2 "github.com/gorilla/mux"
 	"log/slog"
@@ -32,7 +31,7 @@ func (serv *Server) sendAns(msg any, statusCode int, w http.ResponseWriter) {
 
 func (serv *Server) handleGetChats(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
-	chats, err := serv.storeManager.GetChats(context.Background())
+	chats, err := serv.storeManager.GetChats()
 	if err != nil {
 		errDto := dtos2.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
@@ -69,7 +68,7 @@ func (serv *Server) handleAddChat(w http.ResponseWriter, req *http.Request) {
 		serv.sendAns(errDto, 400, w)
 		return
 	}
-	id, err := serv.storeManager.AddChat(context.Background(), newChat)
+	id, err := serv.storeManager.AddChat(newChat)
 	if err != nil {
 		errDto := dtos2.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
@@ -89,7 +88,7 @@ func (serv *Server) handleDeleteChat(w http.ResponseWriter, req *http.Request) {
 		serv.sendAns(errDto, 400, w)
 		return
 	}
-	err = serv.storeManager.DeleteChat(context.Background(), chatId)
+	err = serv.storeManager.DeleteChat(chatId)
 	if err != nil {
 		errDto := dtos2.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
@@ -108,7 +107,7 @@ func (serv *Server) handleGetRepos(w http.ResponseWriter, req *http.Request) {
 		serv.sendAns(errDto, 400, w)
 		return
 	}
-	records, err := serv.storeManager.GetReposByChat(context.Background(), chatId)
+	records, err := serv.storeManager.GetReposByChat(chatId)
 	if err != nil {
 		errDto := dtos2.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
@@ -152,7 +151,7 @@ func (serv *Server) handleAddRepo(w http.ResponseWriter, req *http.Request) {
 		serv.sendAns(errDto, 400, w)
 		return
 	}
-	id, err := serv.storeManager.AddRepo(context.Background(), repo, &repoDto)
+	id, err := serv.storeManager.AddRepo(repo, &repoDto)
 	if err != nil {
 		errDto := dtos2.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
@@ -186,7 +185,7 @@ func (serv *Server) handleDeleteRepo(w http.ResponseWriter, req *http.Request) {
 		serv.sendAns(errDto, 400, w)
 		return
 	}
-	err = serv.storeManager.DeleteRepo(context.Background(), chatID, owner, name)
+	err = serv.storeManager.DeleteRepo(chatID, owner, name)
 	if err != nil {
 		errDto := dtos2.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
@@ -212,7 +211,7 @@ func (serv *Server) handleGetReposByTag(w http.ResponseWriter, req *http.Request
 		serv.sendAns(errDto, 400, w)
 		return
 	}
-	records, err := serv.storeManager.GetReposByTag(context.Background(), chat_id, tag)
+	records, err := serv.storeManager.GetReposByTag(chat_id, tag)
 	if err != nil {
 		errDto := dtos2.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
