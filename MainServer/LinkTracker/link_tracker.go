@@ -6,7 +6,6 @@ import (
 	"Crypto_Bot/MainServer/github_sdk"
 	"Crypto_Bot/MainServer/server"
 	"Crypto_Bot/MainServer/storage"
-	"context"
 	"errors"
 	"github.com/go-co-op/gocron/v2"
 	"log/slog"
@@ -34,7 +33,7 @@ func NewLinkTracker(ghService github_sdk.GithubService, storeManager *server.Sto
 }
 
 func (lt *LinkTracker) checkAllLinks() interface{} {
-	chatNumber, err := lt.recordsStore.GetRecordNumber(context.Background())
+	chatNumber, err := lt.recordsStore.GetRecordNumber()
 	if err != nil {
 		return nil
 	}
@@ -43,7 +42,7 @@ func (lt *LinkTracker) checkAllLinks() interface{} {
 		wg.Add(1)
 		go func(start int, limit int) {
 			defer wg.Done()
-			records, _ := lt.recordsStore.GetRecordOffset(context.Background(), start, limit)
+			records, _ := lt.recordsStore.GetRecordOffset(start, limit)
 			for _, record := range records {
 				err = lt.checkLink(&record)
 				if err != nil {
@@ -60,7 +59,7 @@ func (lt *LinkTracker) tryCheckStatusError(record *storage.ChatRepoRecord, err e
 	var statusErr custom_errors.StatusError
 	if errors.As(err, &statusErr) {
 		if statusErr.StatusCode == 404 {
-			err = lt.storeManager.DeleteRepo(context.Background(), record.Chat.ChatID, record.Repo.Owner, record.Repo.Name)
+			err = lt.storeManager.DeleteRepo(record.Chat.ChatID, record.Repo.Owner, record.Repo.Name)
 			if err != nil {
 				return statusErr
 			}
@@ -114,7 +113,10 @@ func (lt *LinkTracker) Stop() error {
 
 func (lt *LinkTracker) NotifyAll(msg any) {
 	for _, obs := range lt.observers {
-		obs.Notify(msg)
+		err := obs.Notify(msg)
+		if err != nil {
+			logger.Warn("Writing message err: " + err.Error())
+		}
 	}
 }
 

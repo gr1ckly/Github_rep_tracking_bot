@@ -6,7 +6,6 @@ import (
 	"Crypto_Bot/MainServer/server"
 	"Crypto_Bot/MainServer/server/validators"
 	"Crypto_Bot/MainServer/storage/postgres"
-	"context"
 	"github.com/joho/godotenv"
 	"log/slog"
 	"os"
@@ -51,30 +50,40 @@ func main() {
 		logger.Error("GITHUB_API_VERSION not found")
 		return
 	}
-	timeout, err := strconv.Atoi(strings.TrimSpace(os.Getenv("GITHUB_TIMEOUT")))
+	ghTimeout, err := strconv.Atoi(strings.TrimSpace(os.Getenv("GITHUB_TIMEOUT")))
 	if err != nil {
 		logger.Error("GITHUB_TIMEOUT incorrect")
+		return
+	}
+	dbTimeout, err := strconv.Atoi(strings.TrimSpace(os.Getenv("DB_TIMEOUT")))
+	if err != nil {
+		logger.Error("DB_TIMEOUT incorrect")
+		return
+	}
+	kafkaTimeout, err := strconv.Atoi(strings.TrimSpace(os.Getenv("KAFKA_TIMEOUT")))
+	if err != nil {
+		logger.Error("KAFKA_TIMEOUT incorrect")
 		return
 	}
 	batchSize, err := strconv.Atoi(strings.TrimSpace(os.Getenv("BATCH_SIZE")))
 	if err != nil {
-		logger.Error("GITHUB_TIMEOUT incorrect")
+		logger.Error("BATCH_SIZE incorrect")
 		return
 	}
-	ghService := github_sdk.NewHttpGithubService(apiUrl, token, acceptFormat, apiVersion, timeout)
-	chatStore, err := postgres.NewPostgresChatStore(context.Background(), dbUrl)
+	ghService := github_sdk.NewHttpGithubService(apiUrl, token, acceptFormat, apiVersion, ghTimeout)
+	chatStore, err := postgres.NewPostgresChatStore(dbTimeout, dbUrl)
 	defer chatStore.Close()
 	if err != nil {
 		logger.Error(err.Error())
 		return
 	}
-	repoStore, err := postgres.NewPostgresRepoStore(context.Background(), dbUrl)
+	repoStore, err := postgres.NewPostgresRepoStore(dbTimeout, dbUrl)
 	defer repoStore.Close()
 	if err != nil {
 		logger.Error(err.Error())
 		return
 	}
-	chatRepoRecordStore, err := postgres.NewPostgresChatRepoRecordStore(context.Background(), dbUrl)
+	chatRepoRecordStore, err := postgres.NewPostgresChatRepoRecordStore(dbTimeout, dbUrl)
 	defer chatRepoRecordStore.Close()
 	if err != nil {
 		logger.Error(err.Error())
@@ -86,12 +95,39 @@ func main() {
 		logger.Error(err.Error())
 		return
 	}
+	kafkaNetwork := os.Getenv("KAFKA_NETWORK")
+	if kafkaNetwork == "" {
+		logger.Error("KAFKA_NETWORK not found")
+		return
+	}
+	kafkaAddr := os.Getenv("KAFKA_ADDR")
+	if kafkaAddr == "" {
+		logger.Error("KAFKA_ADDR not found")
+		return
+	}
+	kafkaTopicName := os.Getenv("KAFKA_TOPIC_NAME")
+	if kafkaTopicName == "" {
+		logger.Error("KAFKA_TOPIC_NAME not found")
+		return
+	}
+	kafkaTopicPartition, err := strconv.Atoi(strings.TrimSpace(os.Getenv("KAFKA_TOPIC_PARTITION")))
+	if err != nil {
+		logger.Error("KAFKA_TOPIC_PARTITION incorrect")
+		return
+	}
+	kafkaTopicReplicationFactor, err := strconv.Atoi(strings.TrimSpace(os.Getenv("KAFKA_TOPIC_REPLICATION_FACTOR")))
+	if err != nil {
+		logger.Error("KAFKA_TOPIC_REPLICATION_FACTOR incorrect")
+		return
+	}
+	kafkaNotificationManager, err := LinkTracker.NewNotificationService(kafkaTimeout, kafkaNetwork, kafkaAddr, kafkaTopicName, kafkaTopicPartition, kafkaTopicReplicationFactor)
 	linkTracker, err := LinkTracker.NewLinkTracker(ghService, storeManager, chatRepoRecordStore, batchSize)
 	if err != nil {
 		logger.Error(err.Error())
 	}
-	defer linkTracker.Stop()
+	linkTracker.AddObserver(kafkaNotificationManager)
 	linkTracker.StartTracking()
+	defer linkTracker.Stop()
 	server := server.BuildServer(serverUrl, validator, storeManager)
 	defer server.Stop()
 	err = server.Start()

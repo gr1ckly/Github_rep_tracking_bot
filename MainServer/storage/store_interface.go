@@ -1,33 +1,31 @@
 package storage
 
-import "context"
-
 type ChatStore interface {
-	AddNewChat(ctx context.Context, chat *Chat) (int, error)
-	RemoveChat(ctx context.Context, id int) error
-	GetChatByID(ctx context.Context, id int) (*Chat, error)
-	GetChatsOffset(ctx context.Context, start int, limit int) ([]Chat, error)
-	GetChatNumber(ctx context.Context) (int, error)
-	UpdateChat(ctx context.Context, chat *Chat) error
+	AddNewChat(chat *Chat) (int, error)
+	RemoveChat(id int) error
+	GetChatByID(id int) (*Chat, error)
+	GetChatsOffset(start int, limit int) ([]Chat, error)
+	GetChatNumber() (int, error)
+	UpdateChat(chat *Chat) error
 }
 
 type RepoStore interface {
-	AddNewRepo(ctx context.Context, repo *Repo) (int, error)
-	RemoveRepo(ctx context.Context, id int) error
-	GetRepoByID(ctx context.Context, id int) (*Repo, error)
-	GetRepoByOwnerAndName(ctx context.Context, owner string, name string) (*Repo, error)
-	GetReposOffset(ctx context.Context, start int, limit int) ([]Repo, error)
-	GetRepoNumber(ctx context.Context) (int, error)
-	UpdateRepo(ctx context.Context, repo *Repo) error
+	AddNewRepo(repo *Repo) (int, error)
+	RemoveRepo(id int) error
+	GetRepoByID(id int) (*Repo, error)
+	GetRepoByOwnerAndName(owner string, name string) (*Repo, error)
+	GetReposOffset(start int, limit int) ([]Repo, error)
+	GetRepoNumber() (int, error)
+	UpdateRepo(repo *Repo) error
 }
 
 type ChatRepoRecordStore interface {
-	AddNewRecord(ctx context.Context, record *ChatRepoRecord) (int, error)
-	RemoveRecord(ctx context.Context, chat_id int, repo_id int) error
-	GetRecordByChat(ctx context.Context, chat_id int) ([]ChatRepoRecord, error)
-	GetRecordByLink(ctx context.Context, link_id int) ([]ChatRepoRecord, error)
-	GetRecordById(ctx context.Context, id int) (*ChatRepoRecord, error)
-	GetRecordOffset(ctx context.Context, start int, limit int) ([]ChatRepoRecord, error)
-	GetRecordNumber(ctx context.Context) (int, error)
-	UpdateRecord(ctx context.Context, record *ChatRepoRecord) error
+	AddNewRecord(record *ChatRepoRecord) (int, error)
+	RemoveRecord(chat_id int, repo_id int) error
+	GetRecordByChat(chat_id int) ([]ChatRepoRecord, error)
+	GetRecordByLink(link_id int) ([]ChatRepoRecord, error)
+	GetRecordById(id int) (*ChatRepoRecord, error)
+	GetRecordOffset(start int, limit int) ([]ChatRepoRecord, error)
+	GetRecordNumber() (int, error)
+	UpdateRecord(record *ChatRepoRecord) error
 }

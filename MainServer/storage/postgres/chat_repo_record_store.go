@@ -4,6 +4,7 @@ import (
 	"Crypto_Bot/MainServer/storage"
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"time"
 )
 
 const (
@@ -110,15 +111,20 @@ var chatRepoRecordStatementMap = map[string]string{
 }
 
 type PostgresChatRepoRecordStore struct {
-	pool *pgxpool.Pool
+	pool    *pgxpool.Pool
+	timeout int
 }
 
-func NewPostgresChatRepoRecordStore(ctx context.Context, dbUrl string) (*PostgresChatRepoRecordStore, error) {
+func NewPostgresChatRepoRecordStore(timeout int, dbUrl string) (*PostgresChatRepoRecordStore, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
 	pool, err := pgxpool.New(ctx, dbUrl)
 	if err != nil {
 		return nil, err
 	}
-	err = pool.AcquireFunc(ctx, func(conn *pgxpool.Conn) error {
+	initCtx, initCancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer initCancel()
+	err = pool.AcquireFunc(initCtx, func(conn *pgxpool.Conn) error {
 		for key, _ := range chatRepoRecordStatementMap {
 			_, stmtErr := conn.Conn().Prepare(context.Background(), key, chatRepoRecordStatementMap[key])
 			if stmtErr != nil {
@@ -130,15 +136,17 @@ func NewPostgresChatRepoRecordStore(ctx context.Context, dbUrl string) (*Postgre
 	if err != nil {
 		return nil, err
 	}
-	return &PostgresChatRepoRecordStore{pool: pool}, nil
+	return &PostgresChatRepoRecordStore{pool: pool, timeout: timeout}, nil
 }
 
-func (ps *PostgresChatRepoRecordStore) AddNewRecord(ctx context.Context, record *storage.ChatRepoRecord) (int, error) {
-	conn, err := ps.pool.Acquire(ctx)
+func (ps *PostgresChatRepoRecordStore) AddNewRecord(record *storage.ChatRepoRecord) (int, error) {
+	conn, err := ps.pool.Acquire(context.Background())
 	if err != nil {
 		return -1, nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ps.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	var id int
@@ -150,12 +158,14 @@ func (ps *PostgresChatRepoRecordStore) AddNewRecord(ctx context.Context, record 
 	return id, err
 }
 
-func (ps *PostgresChatRepoRecordStore) RemoveRecord(ctx context.Context, chat_id int, repo_id int) error {
-	conn, err := ps.pool.Acquire(ctx)
+func (ps *PostgresChatRepoRecordStore) RemoveRecord(chat_id int, repo_id int) error {
+	conn, err := ps.pool.Acquire(context.Background())
 	if err != nil {
 		return nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ps.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	_, err = tx.Exec(ctx, REMOVE_CHAT_REPO_RECORD_NAME, chat_id, repo_id)
@@ -166,12 +176,14 @@ func (ps *PostgresChatRepoRecordStore) RemoveRecord(ctx context.Context, chat_id
 	return err
 }
 
-func (ps *PostgresChatRepoRecordStore) GetRecordByChat(ctx context.Context, chat_id int) ([]storage.ChatRepoRecord, error) {
-	conn, err := ps.pool.Acquire(ctx)
+func (ps *PostgresChatRepoRecordStore) GetRecordByChat(chat_id int) ([]storage.ChatRepoRecord, error) {
+	conn, err := ps.pool.Acquire(context.Background())
 	if err != nil {
 		return nil, nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ps.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	row, err := tx.Query(ctx, GET_BY_CHAT_CHAT_REPO_RECORD_NAME, chat_id)
@@ -192,12 +204,14 @@ func (ps *PostgresChatRepoRecordStore) GetRecordByChat(ctx context.Context, chat
 	return answer, err
 }
 
-func (ps *PostgresChatRepoRecordStore) GetRecordByLink(ctx context.Context, link_id int) ([]storage.ChatRepoRecord, error) {
-	conn, err := ps.pool.Acquire(ctx)
+func (ps *PostgresChatRepoRecordStore) GetRecordByLink(link_id int) ([]storage.ChatRepoRecord, error) {
+	conn, err := ps.pool.Acquire(context.Background())
 	if err != nil {
 		return nil, nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ps.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	row, err := tx.Query(ctx, GET_BY_LINK_CHAT_REPO_RECORD_NAME, link_id)
@@ -218,12 +232,14 @@ func (ps *PostgresChatRepoRecordStore) GetRecordByLink(ctx context.Context, link
 	return answer, err
 }
 
-func (ps *PostgresChatRepoRecordStore) GetRecordById(ctx context.Context, id int) (*storage.ChatRepoRecord, error) {
-	conn, err := ps.pool.Acquire(ctx)
+func (ps *PostgresChatRepoRecordStore) GetRecordById(id int) (*storage.ChatRepoRecord, error) {
+	conn, err := ps.pool.Acquire(context.Background())
 	if err != nil {
 		return nil, nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ps.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	record := storage.ChatRepoRecord{Chat: &storage.Chat{}, Repo: &storage.Repo{}}
@@ -236,12 +252,14 @@ func (ps *PostgresChatRepoRecordStore) GetRecordById(ctx context.Context, id int
 	return &record, err
 }
 
-func (ps *PostgresChatRepoRecordStore) GetRecordOffset(ctx context.Context, start int, limit int) ([]storage.ChatRepoRecord, error) {
-	conn, err := ps.pool.Acquire(ctx)
+func (ps *PostgresChatRepoRecordStore) GetRecordOffset(start int, limit int) ([]storage.ChatRepoRecord, error) {
+	conn, err := ps.pool.Acquire(context.Background())
 	if err != nil {
 		return nil, nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ps.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	row, err := tx.Query(ctx, GET_OFFSET_CHAT_REPO_RECORD_NAME, start, limit)
@@ -262,12 +280,14 @@ func (ps *PostgresChatRepoRecordStore) GetRecordOffset(ctx context.Context, star
 	return answer, err
 }
 
-func (ps *PostgresChatRepoRecordStore) GetRecordNumber(ctx context.Context) (int, error) {
-	conn, err := ps.pool.Acquire(ctx)
+func (ps *PostgresChatRepoRecordStore) GetRecordNumber() (int, error) {
+	conn, err := ps.pool.Acquire(context.Background())
 	if err != nil {
 		return -1, nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ps.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	var number int
@@ -279,12 +299,14 @@ func (ps *PostgresChatRepoRecordStore) GetRecordNumber(ctx context.Context) (int
 	return number, err
 }
 
-func (ps *PostgresChatRepoRecordStore) UpdateRecord(ctx context.Context, record *storage.ChatRepoRecord) error {
-	conn, err := ps.pool.Acquire(ctx)
+func (ps *PostgresChatRepoRecordStore) UpdateRecord(record *storage.ChatRepoRecord) error {
+	conn, err := ps.pool.Acquire(context.Background())
 	if err != nil {
 		return nil
 	}
 	defer conn.Release()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ps.timeout)*time.Second)
+	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	_, err = tx.Exec(ctx, UPDATE_CHAT_REPO_RECORD_NAME, record.Chat.ChatID, record.Repo.ID, record.Tags, record.Events, record.ID)

@@ -3,7 +3,6 @@ package server
 import (
 	"Crypto_Bot/MainServer/server/dtos"
 	"Crypto_Bot/MainServer/storage"
-	"context"
 	"time"
 )
 
@@ -17,32 +16,32 @@ func NewStoreManager(chatStore storage.ChatStore, repoStore storage.RepoStore, c
 	return &StoreManager{chatStore, repoStore, chatRepoRecordStore}
 }
 
-func (sm *StoreManager) GetChats(ctx context.Context) ([]storage.Chat, error) {
-	chatNumber, err := sm.chatStore.GetChatNumber(ctx)
+func (sm *StoreManager) GetChats() ([]storage.Chat, error) {
+	chatNumber, err := sm.chatStore.GetChatNumber()
 	if err != nil {
 		return nil, err
 	}
-	return sm.chatStore.GetChatsOffset(ctx, 0, chatNumber)
+	return sm.chatStore.GetChatsOffset(0, chatNumber)
 }
 
-func (sm *StoreManager) AddChat(ctx context.Context, chat *storage.Chat) (int, error) {
-	return sm.chatStore.AddNewChat(ctx, chat)
+func (sm *StoreManager) AddChat(chat *storage.Chat) (int, error) {
+	return sm.chatStore.AddNewChat(chat)
 }
 
-func (sm *StoreManager) DeleteChat(ctx context.Context, chatId int) error {
-	return sm.chatStore.RemoveChat(ctx, chatId)
+func (sm *StoreManager) DeleteChat(chatId int) error {
+	return sm.chatStore.RemoveChat(chatId)
 }
 
-func (sm *StoreManager) GetReposByChat(ctx context.Context, chatId int) ([]storage.ChatRepoRecord, error) {
-	return sm.chatRepoRecordStore.GetRecordByChat(ctx, chatId)
+func (sm *StoreManager) GetReposByChat(chatId int) ([]storage.ChatRepoRecord, error) {
+	return sm.chatRepoRecordStore.GetRecordByChat(chatId)
 }
 
-func (sm *StoreManager) AddRepo(ctx context.Context, repo *storage.Repo, repoDto *dtos.RepoDTO) (int, error) {
+func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *dtos.RepoDTO) (int, error) {
 	var id int
 	needToUpdate := false
-	oldRepo, err := sm.repoStore.GetRepoByOwnerAndName(ctx, repo.Owner, repo.Name)
+	oldRepo, err := sm.repoStore.GetRepoByOwnerAndName(repo.Owner, repo.Name)
 	if oldRepo.Link == "" {
-		id, err = sm.repoStore.AddNewRepo(ctx, repo)
+		id, err = sm.repoStore.AddNewRepo(repo)
 		if err != nil {
 			return -1, err
 		}
@@ -60,14 +59,14 @@ func (sm *StoreManager) AddRepo(ctx context.Context, repo *storage.Repo, repoDto
 			needToUpdate = true
 		}
 		if needToUpdate {
-			err = sm.repoStore.UpdateRepo(ctx, oldRepo)
+			err = sm.repoStore.UpdateRepo(oldRepo)
 			if err != nil {
 				return -1, err
 			}
 		}
 		id = oldRepo.ID
 	}
-	chat, err := sm.chatStore.GetChatByID(ctx, repoDto.ChatID)
+	chat, err := sm.chatStore.GetChatByID(repoDto.ChatID)
 	if err != nil {
 		return -1, nil
 	}
@@ -75,28 +74,28 @@ func (sm *StoreManager) AddRepo(ctx context.Context, repo *storage.Repo, repoDto
 	if err != nil {
 		return -1, err
 	}
-	_, err = sm.chatRepoRecordStore.AddNewRecord(ctx, record)
+	_, err = sm.chatRepoRecordStore.AddNewRecord(record)
 	if err != nil {
 		return -1, err
 	}
 	return id, nil
 }
 
-func (sm *StoreManager) DeleteRepo(ctx context.Context, chatId int, owner string, name string) error {
-	repo, err := sm.repoStore.GetRepoByOwnerAndName(ctx, owner, name)
+func (sm *StoreManager) DeleteRepo(chatId int, owner string, name string) error {
+	repo, err := sm.repoStore.GetRepoByOwnerAndName(owner, name)
 	if err != nil {
 		return err
 	}
-	err = sm.chatRepoRecordStore.RemoveRecord(ctx, chatId, repo.ID)
+	err = sm.chatRepoRecordStore.RemoveRecord(chatId, repo.ID)
 	if err != nil {
 		return err
 	}
-	records, err := sm.chatRepoRecordStore.GetRecordByLink(ctx, repo.ID)
+	records, err := sm.chatRepoRecordStore.GetRecordByLink(repo.ID)
 	if err != nil {
 		return err
 	}
 	if len(records) == 0 {
-		err = sm.repoStore.RemoveRepo(ctx, repo.ID)
+		err = sm.repoStore.RemoveRepo(repo.ID)
 		if err != nil {
 			return err
 		}
@@ -129,8 +128,8 @@ func (sm *StoreManager) DeleteRepo(ctx context.Context, chatId int, owner string
 		needUpdate = true
 	}
 	if needUpdate {
-		err = sm.repoStore.UpdateRepo(ctx, repo)
-		err = sm.repoStore.RemoveRepo(ctx, repo.ID)
+		err = sm.repoStore.UpdateRepo(repo)
+		err = sm.repoStore.RemoveRepo(repo.ID)
 		if err != nil {
 			return nil
 		}
@@ -138,8 +137,8 @@ func (sm *StoreManager) DeleteRepo(ctx context.Context, chatId int, owner string
 	return nil
 }
 
-func (sm *StoreManager) GetReposByTag(ctx context.Context, chatId int, tag string) ([]*storage.ChatRepoRecord, error) {
-	records, err := sm.chatRepoRecordStore.GetRecordByChat(ctx, chatId)
+func (sm *StoreManager) GetReposByTag(chatId int, tag string) ([]*storage.ChatRepoRecord, error) {
+	records, err := sm.chatRepoRecordStore.GetRecordByChat(chatId)
 	if err != nil {
 		return nil, err
 	}
