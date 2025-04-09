@@ -1,4 +1,4 @@
-package custom_errors
+package Common
 
 import (
 	"strconv"

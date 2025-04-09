@@ -1,9 +1,9 @@
-package LinkTracker
+package link_tracker
 
 import (
-	"Crypto_Bot/MainServer/LinkTracker/dtos"
-	"Crypto_Bot/MainServer/custom_errors"
+	"Common"
 	"Crypto_Bot/MainServer/github_sdk"
+	"Crypto_Bot/MainServer/link_tracker/dtos"
 	"Crypto_Bot/MainServer/server"
 	"Crypto_Bot/MainServer/storage"
 	"errors"
@@ -56,7 +56,7 @@ func (lt *LinkTracker) checkAllLinks() interface{} {
 }
 
 func (lt *LinkTracker) tryCheckStatusError(record *storage.ChatRepoRecord, err error) error {
-	var statusErr custom_errors.StatusError
+	var statusErr Common.StatusError
 	if errors.As(err, &statusErr) {
 		if statusErr.StatusCode == 404 {
 			err = lt.storeManager.DeleteRepo(record.Chat.ChatID, record.Repo.Owner, record.Repo.Name)

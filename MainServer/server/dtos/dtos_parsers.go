@@ -1,6 +1,7 @@
 package dtos
 
 import (
+	"Common"
 	"Crypto_Bot/MainServer/custom_errors"
 	"Crypto_Bot/MainServer/storage"
 	"strings"
@@ -16,7 +17,7 @@ func ParseNameAndOwner(link string) (string, string, error) {
 	return splitLine[1], splitLine[0], nil
 }
 
-func ParseRepo(dto RepoDTO) (*storage.Repo, error) {
+func ParseRepo(dto Common.RepoDTO) (*storage.Repo, error) {
 	ans := &storage.Repo{}
 	ans.Link = dto.Link
 	name, owner, err := ParseNameAndOwner(ans.Link)
@@ -46,14 +47,14 @@ func ParseRepo(dto RepoDTO) (*storage.Repo, error) {
 	return ans, nil
 }
 
-func ParseChat(dto ChatDTO) (*storage.Chat, error) {
+func ParseChat(dto Common.ChatDTO) (*storage.Chat, error) {
 	ans := &storage.Chat{}
 	ans.ChatID = dto.ChatID
 	ans.Type = dto.Type
 	return ans, nil
 }
 
-func ParseChatRepoRecord(repoDto *RepoDTO, chat *storage.Chat, repo *storage.Repo) (*storage.ChatRepoRecord, error) {
+func ParseChatRepoRecord(repoDto *Common.RepoDTO, chat *storage.Chat, repo *storage.Repo) (*storage.ChatRepoRecord, error) {
 	ans := &storage.ChatRepoRecord{Repo: repo, Chat: chat, Tags: repoDto.Tags, Events: repoDto.Events}
 	return ans, nil
 }
