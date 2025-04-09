@@ -1,4 +1,4 @@
-package dtos
+package Common
 
 import "time"
 

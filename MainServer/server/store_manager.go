@@ -1,6 +1,7 @@
 package server
 
 import (
+	"Common"
 	"Crypto_Bot/MainServer/server/dtos"
 	"Crypto_Bot/MainServer/storage"
 	"time"
@@ -36,7 +37,7 @@ func (sm *StoreManager) GetReposByChat(chatId int) ([]storage.ChatRepoRecord, er
 	return sm.chatRepoRecordStore.GetRecordByChat(chatId)
 }
 
-func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *dtos.RepoDTO) (int, error) {
+func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, chatId int) (int, error) {
 	var id int
 	needToUpdate := false
 	oldRepo, err := sm.repoStore.GetRepoByOwnerAndName(repo.Owner, repo.Name)
@@ -66,7 +67,7 @@ func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *dtos.RepoDTO) (int,
 		}
 		id = oldRepo.ID
 	}
-	chat, err := sm.chatStore.GetChatByID(repoDto.ChatID)
+	chat, err := sm.chatStore.GetChatByID(chatId)
 	if err != nil {
 		return -1, nil
 	}

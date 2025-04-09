@@ -1,4 +1,4 @@
-package LinkTracker
+package link_tracker
 
 type Observer[T any] interface {
 	Notify(T) error

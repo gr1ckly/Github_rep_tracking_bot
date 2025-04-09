@@ -1,4 +1,4 @@
-package dtos
+package Common
 
 type ChatDTO struct {
 	ChatID int    `json:"chat_id"`
@@ -7,7 +7,6 @@ type ChatDTO struct {
 
 type RepoDTO struct {
 	Link   string   `json:"link"`
-	ChatID int      `json:"chat_id"`
 	Tags   []string `json:"tags"`
 	Events []string `json:"events"`
 }

@@ -1,4 +1,4 @@
-package LinkTracker
+package link_tracker
 
 import (
 	"context"

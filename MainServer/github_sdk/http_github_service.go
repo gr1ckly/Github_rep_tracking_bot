@@ -1,7 +1,7 @@
 package github_sdk
 
 import (
-	"Crypto_Bot/MainServer/custom_errors"
+	"Common"
 	"Crypto_Bot/MainServer/server/dtos"
 	"encoding/json"
 	"io"
@@ -64,7 +64,7 @@ func (ghService *HttpGithubService) fetch(repoName string, owner string, way str
 		return ans, err
 	}
 	if resp.StatusCode/100 != 2 {
-		return nil, custom_errors.StatusError{resp.StatusCode, resp.Status, resp.Request.RequestURI}
+		return nil, Common.StatusError{resp.StatusCode, resp.Status, resp.Request.RequestURI}
 	}
 	defer resp.Body.Close()
 	return io.ReadAll(resp.Body)

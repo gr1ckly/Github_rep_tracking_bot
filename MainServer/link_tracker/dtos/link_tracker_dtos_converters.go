@@ -1,12 +1,13 @@
 package dtos
 
 import (
+	"Common"
 	"Crypto_Bot/MainServer/github_sdk"
 	"Crypto_Bot/MainServer/storage"
 )
 
-func ConvertCommit(commit *github_sdk.Commit, chatId int) ChangingDTO {
-	return ChangingDTO{
+func ConvertCommit(commit *github_sdk.Commit, chatId int) Common.ChangingDTO {
+	return Common.ChangingDTO{
 		ChatId: chatId,
 		Link:   commit.URL,
 		Event:  storage.Commit,
@@ -15,8 +16,8 @@ func ConvertCommit(commit *github_sdk.Commit, chatId int) ChangingDTO {
 	}
 }
 
-func ConvertIssue(issue *github_sdk.Issue, chatId int) ChangingDTO {
-	return ChangingDTO{
+func ConvertIssue(issue *github_sdk.Issue, chatId int) Common.ChangingDTO {
+	return Common.ChangingDTO{
 		ChatId:    chatId,
 		Link:      issue.URL,
 		Event:     storage.Issue,
@@ -26,8 +27,8 @@ func ConvertIssue(issue *github_sdk.Issue, chatId int) ChangingDTO {
 	}
 }
 
-func ConvertPR(pr *github_sdk.PullRequest, chatId int) ChangingDTO {
-	return ChangingDTO{
+func ConvertPR(pr *github_sdk.PullRequest, chatId int) Common.ChangingDTO {
+	return Common.ChangingDTO{
 		ChatId:    chatId,
 		Link:      pr.URL,
 		Event:     storage.PullRequest,

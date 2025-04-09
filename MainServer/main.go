@@ -1,11 +1,12 @@
 package main
 
 import (
-	"Crypto_Bot/MainServer/LinkTracker"
 	"Crypto_Bot/MainServer/github_sdk"
+	"Crypto_Bot/MainServer/link_tracker"
 	"Crypto_Bot/MainServer/server"
 	"Crypto_Bot/MainServer/server/validators"
 	"Crypto_Bot/MainServer/storage/postgres"
+	"context"
 	"github.com/joho/godotenv"
 	"log/slog"
 	"os"
@@ -120,8 +121,8 @@ func main() {
 		logger.Error("KAFKA_TOPIC_REPLICATION_FACTOR incorrect")
 		return
 	}
-	kafkaNotificationManager, err := LinkTracker.NewNotificationService(kafkaTimeout, kafkaNetwork, kafkaAddr, kafkaTopicName, kafkaTopicPartition, kafkaTopicReplicationFactor)
-	linkTracker, err := LinkTracker.NewLinkTracker(ghService, storeManager, chatRepoRecordStore, batchSize)
+	kafkaNotificationManager, err := link_tracker.NewNotificationService(kafkaTimeout, kafkaNetwork, kafkaAddr, kafkaTopicName, kafkaTopicPartition, kafkaTopicReplicationFactor)
+	linkTracker, err := link_tracker.NewLinkTracker(ghService, storeManager, chatRepoRecordStore, batchSize)
 	if err != nil {
 		logger.Error(err.Error())
 	}
@@ -129,7 +130,9 @@ func main() {
 	linkTracker.StartTracking()
 	defer linkTracker.Stop()
 	server := server.BuildServer(serverUrl, validator, storeManager)
-	defer server.Stop()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	defer server.Stop(ctx)
 	err = server.Start()
 	if err != nil {
 		logger.Error(err.Error())
