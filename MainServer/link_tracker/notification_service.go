@@ -55,9 +55,12 @@ func NewNotificationService(timeout int, network string, addr string, topicName 
 		}
 	}
 	writer := &kafka.Writer{
-		Addr:     kafka.TCP(addr),
-		Topic:    topicName,
-		Balancer: &kafka.LeastBytes{},
+		Addr:         kafka.TCP(addr),
+		Topic:        topicName,
+		Balancer:     &kafka.LeastBytes{},
+		RequiredAcks: kafka.RequireAll,
+		Async:        false,
+		MaxAttempts:  5,
 	}
 	return &KafkaNotificationService{writer, timeout}, nil
 }
@@ -70,7 +73,6 @@ func (ns *KafkaNotificationService) Notify(msg any) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ns.timeout)*time.Second)
 	defer cancel()
 	return ns.writer.WriteMessages(ctx, kafka.Message{
-		Key:   []byte("Message"),
 		Value: data,
 	})
 }
