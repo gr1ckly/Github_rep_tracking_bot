@@ -65,7 +65,7 @@ func NewPostgresChatStore(timeout int, dbUrl string) (*PostgresChatStore, error)
 	return &PostgresChatStore{pool: pool, timeout: timeout}, nil
 }
 
-func (pc *PostgresChatStore) AddNewChat(chat *storage.Chat) (int, error) {
+func (pc *PostgresChatStore) AddNewChat(chat *storage.Chat) (int64, error) {
 	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
 		return -1, nil
@@ -83,7 +83,7 @@ func (pc *PostgresChatStore) AddNewChat(chat *storage.Chat) (int, error) {
 	return chat.ChatID, err
 }
 
-func (pc *PostgresChatStore) RemoveChat(id int) error {
+func (pc *PostgresChatStore) RemoveChat(id int64) error {
 	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
 		return nil
@@ -101,7 +101,7 @@ func (pc *PostgresChatStore) RemoveChat(id int) error {
 	return err
 }
 
-func (pc *PostgresChatStore) GetChatByID(id int) (*storage.Chat, error) {
+func (pc *PostgresChatStore) GetChatByID(id int64) (*storage.Chat, error) {
 	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
 		return nil, nil

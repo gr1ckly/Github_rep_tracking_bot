@@ -25,19 +25,19 @@ func (sm *StoreManager) GetChats() ([]storage.Chat, error) {
 	return sm.chatStore.GetChatsOffset(0, chatNumber)
 }
 
-func (sm *StoreManager) AddChat(chat *storage.Chat) (int, error) {
+func (sm *StoreManager) AddChat(chat *storage.Chat) (int64, error) {
 	return sm.chatStore.AddNewChat(chat)
 }
 
-func (sm *StoreManager) DeleteChat(chatId int) error {
+func (sm *StoreManager) DeleteChat(chatId int64) error {
 	return sm.chatStore.RemoveChat(chatId)
 }
 
-func (sm *StoreManager) GetReposByChat(chatId int) ([]storage.ChatRepoRecord, error) {
+func (sm *StoreManager) GetReposByChat(chatId int64) ([]storage.ChatRepoRecord, error) {
 	return sm.chatRepoRecordStore.GetRecordByChat(chatId)
 }
 
-func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, chatId int) (int, error) {
+func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, chatId int64) (int, error) {
 	var id int
 	needToUpdate := false
 	oldRepo, err := sm.repoStore.GetRepoByOwnerAndName(repo.Owner, repo.Name)
@@ -82,21 +82,21 @@ func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, cha
 	return id, nil
 }
 
-func (sm *StoreManager) DeleteRepo(chatId int, owner string, name string) error {
+func (sm *StoreManager) DeleteRepo(chatId int64, owner string, name string) (int64, error) {
 	repo, err := sm.repoStore.GetRepoByOwnerAndName(owner, name)
 	if err != nil {
-		return err
+		return -1, err
 	}
-	err = sm.chatRepoRecordStore.RemoveRecord(chatId, repo.ID)
+	num, err := sm.chatRepoRecordStore.RemoveRecord(chatId, repo.ID)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	records, err := sm.chatRepoRecordStore.GetRecordByLink(repo.ID)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	if len(records) == 0 {
-		return nil
+		return 0, nil
 	}
 	checkPr := false
 	checkCommit := false
@@ -129,13 +129,13 @@ func (sm *StoreManager) DeleteRepo(chatId int, owner string, name string) error 
 		err = sm.repoStore.UpdateRepo(repo)
 		err = sm.repoStore.RemoveRepo(repo.ID)
 		if err != nil {
-			return nil
+			return -1, nil
 		}
 	}
-	return nil
+	return num, nil
 }
 
-func (sm *StoreManager) GetReposByTag(chatId int, tag string) ([]*storage.ChatRepoRecord, error) {
+func (sm *StoreManager) GetReposByTag(chatId int64, tag string) ([]*storage.ChatRepoRecord, error) {
 	records, err := sm.chatRepoRecordStore.GetRecordByChat(chatId)
 	if err != nil {
 		return nil, err

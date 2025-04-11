@@ -3,7 +3,7 @@ package Common
 import "time"
 
 type ChangingDTO struct {
-	ChatId    int       `json:"chat_id"`
+	ChatId    int64     `json:"chat_id"`
 	Link      string    `json:"link"`
 	Event     string    `json:"event"`
 	Author    string    `json:"author"`
