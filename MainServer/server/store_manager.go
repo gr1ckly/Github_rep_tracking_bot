@@ -96,10 +96,7 @@ func (sm *StoreManager) DeleteRepo(chatId int, owner string, name string) error 
 		return err
 	}
 	if len(records) == 0 {
-		err = sm.repoStore.RemoveRepo(repo.ID)
-		if err != nil {
-			return err
-		}
+		return nil
 	}
 	checkPr := false
 	checkCommit := false
