@@ -33,11 +33,11 @@ func ParseRepo(dto Common.RepoDTO) (*storage.Repo, error) {
 	} else {
 		for _, event := range dto.Events {
 			switch event {
-			case string(storage.PullRequest):
+			case string(Common.PullRequest):
 				ans.LastPR = time.Now()
-			case string(storage.Commit):
+			case string(Common.Commit):
 				ans.LastCommit = time.Now()
-			case string(storage.Issue):
+			case string(Common.Issue):
 				ans.LastIssue = time.Now()
 			default:
 				return nil, custom_errors.InvalidRepoEventsError{dto.Events}

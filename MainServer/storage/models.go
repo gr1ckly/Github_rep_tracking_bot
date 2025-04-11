@@ -2,12 +2,6 @@ package storage
 
 import "time"
 
-const (
-	Commit      string = "commit"
-	Issue       string = "issue"
-	PullRequest string = "pull_request"
-)
-
 type Repo struct {
 	ID         int
 	Name       string
@@ -19,7 +13,7 @@ type Repo struct {
 }
 
 type Chat struct {
-	ChatID int
+	ChatID int64
 	Type   string
 }
 

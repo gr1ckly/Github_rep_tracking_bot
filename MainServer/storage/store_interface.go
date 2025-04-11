@@ -1,9 +1,9 @@
 package storage
 
 type ChatStore interface {
-	AddNewChat(chat *Chat) (int, error)
-	RemoveChat(id int) error
-	GetChatByID(id int) (*Chat, error)
+	AddNewChat(chat *Chat) (int64, error)
+	RemoveChat(id int64) error
+	GetChatByID(id int64) (*Chat, error)
 	GetChatsOffset(start int, limit int) ([]Chat, error)
 	GetChatNumber() (int, error)
 	UpdateChat(chat *Chat) error
@@ -21,8 +21,8 @@ type RepoStore interface {
 
 type ChatRepoRecordStore interface {
 	AddNewRecord(record *ChatRepoRecord) (int, error)
-	RemoveRecord(chat_id int, repo_id int) error
-	GetRecordByChat(chat_id int) ([]ChatRepoRecord, error)
+	RemoveRecord(chat_id int64, repo_id int) (int64, error)
+	GetRecordByChat(chat_id int64) ([]ChatRepoRecord, error)
 	GetRecordByLink(link_id int) ([]ChatRepoRecord, error)
 	GetRecordById(id int) (*ChatRepoRecord, error)
 	GetRecordOffset(start int, limit int) ([]ChatRepoRecord, error)

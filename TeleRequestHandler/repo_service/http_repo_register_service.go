@@ -51,7 +51,7 @@ func (rs *HttpRepoRegisterService) tryType(res Common.ResultDTO[[]Common.RepoDTO
 	return result, nil
 }
 
-func (rs *HttpRepoRegisterService) AddRepo(chatId int, dto Common.RepoDTO) error {
+func (rs *HttpRepoRegisterService) AddRepo(chatId int64, dto Common.RepoDTO) error {
 	data, err := json.Marshal(dto)
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func (rs *HttpRepoRegisterService) AddRepo(chatId int, dto Common.RepoDTO) error
 	return err
 }
 
-func (rs *HttpRepoRegisterService) GetReposByChat(chatId int) ([]Common.RepoDTO, error) {
+func (rs *HttpRepoRegisterService) GetReposByChat(chatId int64) ([]Common.RepoDTO, error) {
 	data, err := rs.fetch("GET", fmt.Sprintf(rs.serverUrl+rs.repoApiExt+"/%v", chatId), nil, nil)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (rs *HttpRepoRegisterService) GetReposByChat(chatId int) ([]Common.RepoDTO,
 	return rs.tryType(res)
 }
 
-func (rs *HttpRepoRegisterService) GetReposByTag(chatId int, tag string) ([]Common.RepoDTO, error) {
+func (rs *HttpRepoRegisterService) GetReposByTag(chatId int64, tag string) ([]Common.RepoDTO, error) {
 	data, err := rs.fetch("GET", fmt.Sprintf(rs.serverUrl+rs.repoApiExt+"/%v/%v", chatId, tag), nil, nil)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func (rs *HttpRepoRegisterService) GetReposByTag(chatId int, tag string) ([]Comm
 	return rs.tryType(res)
 }
 
-func (rs *HttpRepoRegisterService) DeleteRepo(chatId int, link string) error {
+func (rs *HttpRepoRegisterService) DeleteRepo(chatId int64, link string) error {
 	params := url.Values{}
 	params.Add("link", link)
 	_, err := rs.fetch("DELETE", fmt.Sprintf(rs.serverUrl+rs.repoApiExt+"/%v", chatId), params, nil)

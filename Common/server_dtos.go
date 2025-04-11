@@ -1,7 +1,7 @@
 package Common
 
 type ChatDTO struct {
-	ChatID int    `json:"chat_id"`
+	ChatID int64  `json:"chat_id"`
 	Type   string `json:"type"`
 }
 

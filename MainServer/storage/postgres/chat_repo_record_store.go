@@ -158,25 +158,25 @@ func (ps *PostgresChatRepoRecordStore) AddNewRecord(record *storage.ChatRepoReco
 	return id, err
 }
 
-func (ps *PostgresChatRepoRecordStore) RemoveRecord(chat_id int, repo_id int) error {
+func (ps *PostgresChatRepoRecordStore) RemoveRecord(chat_id int64, repo_id int) (int64, error) {
 	conn, err := ps.pool.Acquire(context.Background())
 	if err != nil {
-		return nil
+		return -1, nil
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ps.timeout)*time.Second)
 	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, REMOVE_CHAT_REPO_RECORD_NAME, chat_id, repo_id)
+	res, err := tx.Exec(ctx, REMOVE_CHAT_REPO_RECORD_NAME, chat_id, repo_id)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	err = tx.Commit(ctx)
-	return err
+	return res.RowsAffected(), err
 }
 
-func (ps *PostgresChatRepoRecordStore) GetRecordByChat(chat_id int) ([]storage.ChatRepoRecord, error) {
+func (ps *PostgresChatRepoRecordStore) GetRecordByChat(chat_id int64) ([]storage.ChatRepoRecord, error) {
 	conn, err := ps.pool.Acquire(context.Background())
 	if err != nil {
 		return nil, nil

@@ -17,11 +17,11 @@ var logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSou
 
 type KafkaNotificationWaiter struct {
 	reader         *kafka.Reader
-	bot            bot.Bot[any, string, int]
+	bot            bot.Bot[any, string, int64]
 	messagePattern string
 }
 
-func NewKafkaNotificationWaiter(network string, addr string, topicName string, topicPartition int, topicReplicationFactor int, groupId string, messagePattern string, bot bot.Bot[any, string, int]) (*KafkaNotificationWaiter, error) {
+func NewKafkaNotificationWaiter(network string, addr string, topicName string, topicPartition int, topicReplicationFactor int, groupId string, messagePattern string, bot bot.Bot[any, string, int64]) (*KafkaNotificationWaiter, error) {
 	conn, err := kafka.Dial(network, addr)
 	if err != nil {
 		return nil, err

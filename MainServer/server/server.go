@@ -6,7 +6,9 @@ import (
 	"Crypto_Bot/MainServer/server/validators"
 	"context"
 	"encoding/json"
+	"errors"
 	mux2 "github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5/pgconn"
 	"log/slog"
 	"net/http"
 	"os"
@@ -70,6 +72,15 @@ func (serv *Server) handleAddChat(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	id, err := serv.storeManager.AddChat(newChat)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			errDto := Common.ErrorDTO{"Chat already register"}
+			logger.Error(err.Error())
+			serv.sendAns(errDto, 409, w)
+			return
+		}
+	}
 	if err != nil {
 		errDto := Common.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
@@ -82,7 +93,7 @@ func (serv *Server) handleAddChat(w http.ResponseWriter, req *http.Request) {
 
 func (serv *Server) handleDeleteChat(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
-	chatId, err := strconv.Atoi(strings.TrimSpace(req.URL.Query().Get("chat_id")))
+	chatId, err := strconv.ParseInt(strings.TrimSpace(req.URL.Query().Get("chat_id")), 10, 64)
 	if err != nil {
 		errDto := Common.ErrorDTO{"Invalid chat_id format"}
 		logger.Error("Invalid chat_id format " + err.Error())
@@ -101,7 +112,7 @@ func (serv *Server) handleDeleteChat(w http.ResponseWriter, req *http.Request) {
 
 func (serv *Server) handleGetRepos(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
-	chatId, err := strconv.Atoi(strings.TrimSpace(req.URL.Query().Get("chat_id")))
+	chatId, err := strconv.ParseInt(strings.TrimSpace(req.URL.Query().Get("chat_id")), 10, 64)
 	if err != nil {
 		errDto := Common.ErrorDTO{"Invalid chat_id format"}
 		logger.Error("Invalid chat_id format " + err.Error())
@@ -153,7 +164,7 @@ func (serv *Server) handleAddRepo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	vars := mux2.Vars(req)
-	chatId, err := strconv.Atoi(vars["chat_id"])
+	chatId, err := strconv.ParseInt(vars["chat_id"], 10, 64)
 	if err != nil {
 		errDto := Common.ErrorDTO{"Invalid chat_id"}
 		logger.Error(err.Error())
@@ -174,7 +185,7 @@ func (serv *Server) handleAddRepo(w http.ResponseWriter, req *http.Request) {
 func (serv *Server) handleDeleteRepo(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	vars := mux2.Vars(req)
-	chatId, err := strconv.Atoi(vars["chat_id"])
+	chatId, err := strconv.ParseInt(vars["chat_id"], 10, 64)
 	if err != nil {
 		errDto := Common.ErrorDTO{"Invalid chat_id"}
 		logger.Error(err.Error())
@@ -195,11 +206,15 @@ func (serv *Server) handleDeleteRepo(w http.ResponseWriter, req *http.Request) {
 		serv.sendAns(errDto, 400, w)
 		return
 	}
-	err = serv.storeManager.DeleteRepo(chatId, owner, name)
+	num, err := serv.storeManager.DeleteRepo(chatId, owner, name)
 	if err != nil {
 		errDto := Common.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
 		serv.sendAns(errDto, 500, w)
+		return
+	}
+	if num == 0 {
+		serv.sendAns(nil, 404, w)
 		return
 	}
 	serv.sendAns(nil, 200, w)
@@ -208,7 +223,7 @@ func (serv *Server) handleDeleteRepo(w http.ResponseWriter, req *http.Request) {
 func (serv *Server) handleGetReposByTag(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	vars := mux2.Vars(req)
-	chatId, err := strconv.Atoi(vars["chat_id"])
+	chatId, err := strconv.ParseInt(vars["chat_id"], 10, 64)
 	if err != nil {
 		errDto := Common.ErrorDTO{"Invalid chat_id"}
 		logger.Error(err.Error())
