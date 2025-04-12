@@ -6,6 +6,7 @@ import (
 	"TeleRequestHandler/notification_service/converters"
 	"context"
 	"encoding/json"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/segmentio/kafka-go"
 	"log/slog"
 	"net"
@@ -16,12 +17,11 @@ import (
 var logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
 
 type KafkaNotificationWaiter struct {
-	reader         *kafka.Reader
-	bot            bot.Bot[any, string, int64]
-	messagePattern string
+	reader *kafka.Reader
+	bot    bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
 }
 
-func NewKafkaNotificationWaiter(network string, addr string, topicName string, topicPartition int, topicReplicationFactor int, groupId string, messagePattern string, bot bot.Bot[any, string, int64]) (*KafkaNotificationWaiter, error) {
+func NewKafkaNotificationWaiter(network string, addr string, topicName string, topicPartition int, topicReplicationFactor int, groupId string, bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) (*KafkaNotificationWaiter, error) {
 	conn, err := kafka.Dial(network, addr)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func NewKafkaNotificationWaiter(network string, addr string, topicName string, t
 		CommitInterval: 0,
 		StartOffset:    kafka.FirstOffset,
 	})
-	return &KafkaNotificationWaiter{reader, bot, messagePattern}, nil
+	return &KafkaNotificationWaiter{reader, bot}, nil
 }
 
 func (ns *KafkaNotificationWaiter) WaitNotification(ctx context.Context) {
@@ -110,8 +110,8 @@ func (ns *KafkaNotificationWaiter) WaitNotification(ctx context.Context) {
 }
 
 func (ns *KafkaNotificationWaiter) processMessage(dto Common.ChangingDTO) error {
-	msg := converters.ConvertChanging(ns.messagePattern, dto)
-	err := ns.bot.SendMessage(dto.ChatId, msg)
+	msg := converters.ConvertChanging(dto)
+	err := ns.bot.SendMessage(tgbotapi.NewMessage(dto.ChatId, msg))
 	return err
 }
 

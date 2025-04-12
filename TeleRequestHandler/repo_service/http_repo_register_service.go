@@ -13,14 +13,13 @@ import (
 )
 
 type HttpRepoRegisterService struct {
-	client         *http.Client
-	serverUrl      string
-	repoApiExt     string
-	repoTagsApiExt string
+	client     *http.Client
+	serverUrl  string
+	repoApiExt string
 }
 
-func NewHttpChatRegisterService(serverUrl string, chatApiExt string, repoTagsApiExt string, timeout int) *HttpRepoRegisterService {
-	return &HttpRepoRegisterService{client: &http.Client{Timeout: time.Duration(timeout) * time.Second}, serverUrl: serverUrl, repoApiExt: chatApiExt, repoTagsApiExt: repoTagsApiExt}
+func NewHttpRepoRegisterService(serverUrl string, chatApiExt string, timeout int) *HttpRepoRegisterService {
+	return &HttpRepoRegisterService{client: &http.Client{Timeout: time.Duration(timeout) * time.Second}, serverUrl: serverUrl, repoApiExt: chatApiExt}
 }
 
 func (rs *HttpRepoRegisterService) fetch(method string, baseUrl string, params url.Values, body []byte) ([]byte, error) {

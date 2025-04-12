@@ -8,10 +8,10 @@ import (
 )
 
 type WaitTagsState struct {
-	bot bot.Bot[any, tgbotapi.MessageConfig]
+	bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
 }
 
-func NewWaitTagsState(bot bot.Bot[any, tgbotapi.MessageConfig]) *WaitTagsState {
+func NewWaitTagsState(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) *WaitTagsState {
 	return &WaitTagsState{bot}
 }
 
@@ -24,7 +24,7 @@ func (wt *WaitTagsState) Start(usrCtx *UserContext) error {
 	msg := tgbotapi.NewMessage(usrCtx.ChatId, "Введите теги для данного репозитория через пробел")
 	msg.ReplyMarkup = buttons
 	msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-	return wt.bot.Send(msg)
+	return wt.bot.SendMessage(msg)
 }
 
 func (wt *WaitTagsState) Process(usrCtx *UserContext, update tgbotapi.Update) error {
@@ -38,5 +38,5 @@ func (wt *WaitTagsState) Process(usrCtx *UserContext, update tgbotapi.Update) er
 		}
 	}
 	usrCtx.Tags = strings.Split(update.Message.Text, " ")
-	return wt.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Теги для данного репозитория: "+strings.Join(usrCtx.Tags, " ")))
+	return wt.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Теги для данного репозитория: "+strings.Join(usrCtx.Tags, " ")))
 }

@@ -25,7 +25,7 @@ func (c *Command) GetDescription() string {
 	return c.name + ": " + c.description
 }
 
-func GetCommands(bot bot.Bot[any, tgbotapi.MessageConfig], chatService chat_service.ChatRegisterService, repoService repo_service.RepoRegisterService) map[string]*Command {
+func GetCommands(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig], chatService chat_service.ChatRegisterService, repoService repo_service.RepoRegisterService) map[string]*Command {
 	return map[string]*Command{
 		"help":  NewCommand("help", "Справка о доступных командах", NewCommandHelpHandler(bot)),
 		"start": NewCommand("start", "Начало работы с ботом", NewCommandStartHandler(bot, chatService)),

@@ -10,12 +10,12 @@ import (
 )
 
 type CommandDelHandler struct {
-	bot              bot.Bot[any, tgbotapi.MessageConfig]
+	bot              bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
 	repoService      repo_service.RepoRegisterService
 	stateTransitions map[state_machine.StateName]*state_machine.State
 }
 
-func NewCommandDelHandler(bot bot.Bot[any, tgbotapi.MessageConfig], repoService repo_service.RepoRegisterService) *CommandDelHandler {
+func NewCommandDelHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig], repoService repo_service.RepoRegisterService) *CommandDelHandler {
 	return &CommandDelHandler{bot, repoService, state_machine.GetTransitions("del", bot)}
 }
 
@@ -27,7 +27,7 @@ func (ca *CommandDelHandler) Execute(usrCtx *state_machine.UserContext, update t
 			var prErr custom_erros.ProcessError
 			if errors.As(err, &prErr) {
 				if prErr.Error() != "" {
-					err = ca.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, prErr.Error()))
+					err = ca.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, prErr.Error()))
 					if err != nil {
 						logger.Error(err.Error())
 					}
@@ -46,19 +46,19 @@ func (ca *CommandDelHandler) Execute(usrCtx *state_machine.UserContext, update t
 			err := ca.repoService.DeleteRepo(usrCtx.ChatId, usrCtx.Link)
 			var servErr custom_erros.ServerError
 			if errors.As(err, &servErr) && servErr.StatusCode == 404 {
-				err = ca.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Вы не отслеживаете данный репозиторий"))
+				err = ca.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Вы не отслеживаете данный репозиторий"))
 				if err != nil {
 					logger.Error(err.Error())
 				}
 				usrCtx.CurrentState = state_machine.NewState(state_machine.NONE, state_machine.NewNoneState(ca.bot))
 			} else {
-				err = ca.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Некорректная ссылка"))
+				err = ca.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Некорректная ссылка"))
 				if err != nil {
 					logger.Error(err.Error())
 				}
 			}
 		} else {
-			err := ca.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Ошибка при вводе данных, попробуйте заново"))
+			err := ca.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Ошибка при вводе данных, попробуйте заново"))
 			if err != nil {
 				logger.Error(err.Error())
 			}
