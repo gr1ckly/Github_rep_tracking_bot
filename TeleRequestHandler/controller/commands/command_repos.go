@@ -5,17 +5,19 @@ import (
 	"TeleRequestHandler/bot"
 	"TeleRequestHandler/controller/converters"
 	"TeleRequestHandler/controller/state_machine"
+	"TeleRequestHandler/custom_erros"
 	"TeleRequestHandler/repo_service"
+	"errors"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type CommandReposHandler struct {
-	bot              bot.Bot[any, string, int64]
+	bot              bot.Bot[any, tgbotapi.MessageConfig]
 	repoService      repo_service.RepoRegisterService
 	stateTransitions map[state_machine.StateName]*state_machine.State
 }
 
-func NewCommandReposHandler(bot bot.Bot[any, string, int64], repoService repo_service.RepoRegisterService) *CommandReposHandler {
+func NewCommandReposHandler(bot bot.Bot[any, tgbotapi.MessageConfig], repoService repo_service.RepoRegisterService) *CommandReposHandler {
 	return &CommandReposHandler{bot, repoService, state_machine.GetTransitions("repos", bot)}
 }
 
@@ -24,6 +26,20 @@ func (cr *CommandReposHandler) Execute(usrCtx *state_machine.UserContext, update
 		err := usrCtx.CurrentState.Process(usrCtx, update)
 		if err != nil {
 			logger.Error(err.Error())
+			var prErr custom_erros.ProcessError
+			if errors.As(err, &prErr) {
+				if prErr.Error() != "" {
+					err = cr.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, prErr.Error()))
+					if err != nil {
+						logger.Error(err.Error())
+					}
+				}
+				err = usrCtx.CurrentState.Start(usrCtx)
+				if err != nil {
+					logger.Error(err.Error())
+				}
+				return
+			}
 		}
 	}
 	usrCtx.CurrentState, _ = cr.stateTransitions[usrCtx.CurrentState.Name]
@@ -34,7 +50,7 @@ func (cr *CommandReposHandler) Execute(usrCtx *state_machine.UserContext, update
 				newRepos, err := cr.repoService.GetReposByChat(usrCtx.ChatId)
 				if err != nil {
 					logger.Error(err.Error())
-					err = cr.bot.SendMessage(usrCtx.ChatId, "Возникла ошибка при получении репозиториев")
+					err = cr.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Возникла ошибка при получении репозиториев"))
 					if err != nil {
 						logger.Error(err.Error())
 					}
@@ -52,21 +68,19 @@ func (cr *CommandReposHandler) Execute(usrCtx *state_machine.UserContext, update
 					repos = append(repos, newRepos...)
 				}
 			}
-			err := cr.bot.SendMessage(usrCtx.ChatId, converters.ConvertToMessage(repos))
+			err := cr.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, converters.ConvertToMessage(repos)))
 			if err != nil {
 				logger.Error(err.Error())
 			}
 		} else {
-			err := cr.bot.SendMessage(usrCtx.ChatId, "Ошибка при вводе данных, попробуйте заново")
+			err := cr.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Ошибка при вводе данных, попробуйте заново"))
 			if err != nil {
 				logger.Error(err.Error())
 			}
 		}
-		usrCtx.CommandName = ""
-	} else {
-		err := usrCtx.CurrentState.Start(usrCtx.ChatId)
-		if err != nil {
-			logger.Error(err.Error())
-		}
+	}
+	err := usrCtx.CurrentState.Start(usrCtx)
+	if err != nil {
+		logger.Error(err.Error())
 	}
 }

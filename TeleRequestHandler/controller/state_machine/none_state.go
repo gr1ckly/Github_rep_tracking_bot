@@ -6,15 +6,22 @@ import (
 )
 
 type NoneState struct {
-	bot bot.Bot[any, string, int64]
+	bot bot.Bot[any, tgbotapi.MessageConfig]
 }
 
-func NewNoneState(bot bot.Bot[any, string, int64]) *NoneState {
+func NewNoneState(bot bot.Bot[any, tgbotapi.MessageConfig]) *NoneState {
 	return &NoneState{bot}
 }
 
-func (us *NoneState) Start(chatId int64) error {
-	return us.bot.SendMessage(chatId, "Введите /help для получения информации о доступных командах")
+func (us *NoneState) Start(usrCtx *UserContext) error {
+	usrCtx.CommandName = ""
+	usrCtx.Tags = nil
+	usrCtx.Events = nil
+	usrCtx.Link = ""
+	reply := tgbotapi.NewMessage(usrCtx.ChatId, "")
+	reply.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+	reply.DisableNotification = true
+	return us.bot.Send(reply)
 }
 
 func (us *NoneState) Process(usrCtx *UserContext, update tgbotapi.Update) error {
