@@ -29,7 +29,7 @@ func NewTeleBot(token string) (*TeleBot, error) {
 	return &TeleBot{bot}, nil
 }
 
-func (bot *TeleBot) GetUpdates(timeout int) tgbotapi.UpdatesChannel {
+func (bot *TeleBot) GetUpdatesChannel(timeout int) tgbotapi.UpdatesChannel {
 	upd := tgbotapi.NewUpdate(0)
 	upd.Timeout = timeout
 	updates := bot.GetUpdatesChan(upd)
@@ -37,5 +37,6 @@ func (bot *TeleBot) GetUpdates(timeout int) tgbotapi.UpdatesChannel {
 }
 
 func (bot *TeleBot) SendMessage(msg tgbotapi.MessageConfig) error {
-	return bot.SendMessage(msg)
+	_, err := bot.Send(msg)
+	return err
 }

@@ -6,10 +6,10 @@ import (
 )
 
 type NoneState struct {
-	bot bot.Bot[any, tgbotapi.MessageConfig]
+	bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
 }
 
-func NewNoneState(bot bot.Bot[any, tgbotapi.MessageConfig]) *NoneState {
+func NewNoneState(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) *NoneState {
 	return &NoneState{bot}
 }
 
@@ -21,7 +21,7 @@ func (us *NoneState) Start(usrCtx *UserContext) error {
 	reply := tgbotapi.NewMessage(usrCtx.ChatId, "")
 	reply.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 	reply.DisableNotification = true
-	return us.bot.Send(reply)
+	return us.bot.SendMessage(reply)
 }
 
 func (us *NoneState) Process(usrCtx *UserContext, update tgbotapi.Update) error {

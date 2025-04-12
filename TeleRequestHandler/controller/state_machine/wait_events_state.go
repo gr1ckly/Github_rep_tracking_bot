@@ -11,11 +11,11 @@ import (
 )
 
 type WaitEventsState struct {
-	bot            bot.Bot[any, tgbotapi.MessageConfig]
+	bot            bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
 	checkboxStates map[int64]map[string]bool
 }
 
-func NewWaitEventsState(bot bot.Bot[any, tgbotapi.MessageConfig]) *WaitEventsState {
+func NewWaitEventsState(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) *WaitEventsState {
 	return &WaitEventsState{bot, map[int64]map[string]bool{}}
 }
 
@@ -40,7 +40,7 @@ func (we *WaitEventsState) Start(usrCtx *UserContext) error {
 	confirm := tgbotapi.NewInlineKeyboardButtonData("Подтвердить", "confirm")
 	rows = append(rows, tgbotapi.NewInlineKeyboardRow(confirm))
 	reply.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(rows...)
-	return we.bot.Send(reply)
+	return we.bot.SendMessage(reply)
 }
 
 func (we *WaitEventsState) Process(usrCtx *UserContext, update tgbotapi.Update) error {

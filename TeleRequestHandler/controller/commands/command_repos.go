@@ -12,12 +12,12 @@ import (
 )
 
 type CommandReposHandler struct {
-	bot              bot.Bot[any, tgbotapi.MessageConfig]
+	bot              bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
 	repoService      repo_service.RepoRegisterService
 	stateTransitions map[state_machine.StateName]*state_machine.State
 }
 
-func NewCommandReposHandler(bot bot.Bot[any, tgbotapi.MessageConfig], repoService repo_service.RepoRegisterService) *CommandReposHandler {
+func NewCommandReposHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig], repoService repo_service.RepoRegisterService) *CommandReposHandler {
 	return &CommandReposHandler{bot, repoService, state_machine.GetTransitions("repos", bot)}
 }
 
@@ -29,7 +29,7 @@ func (cr *CommandReposHandler) Execute(usrCtx *state_machine.UserContext, update
 			var prErr custom_erros.ProcessError
 			if errors.As(err, &prErr) {
 				if prErr.Error() != "" {
-					err = cr.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, prErr.Error()))
+					err = cr.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, prErr.Error()))
 					if err != nil {
 						logger.Error(err.Error())
 					}
@@ -50,7 +50,7 @@ func (cr *CommandReposHandler) Execute(usrCtx *state_machine.UserContext, update
 				newRepos, err := cr.repoService.GetReposByChat(usrCtx.ChatId)
 				if err != nil {
 					logger.Error(err.Error())
-					err = cr.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Возникла ошибка при получении репозиториев"))
+					err = cr.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Возникла ошибка при получении репозиториев"))
 					if err != nil {
 						logger.Error(err.Error())
 					}
@@ -68,12 +68,12 @@ func (cr *CommandReposHandler) Execute(usrCtx *state_machine.UserContext, update
 					repos = append(repos, newRepos...)
 				}
 			}
-			err := cr.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, converters.ConvertToMessage(repos)))
+			err := cr.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, converters.ConvertToMessage(repos)))
 			if err != nil {
 				logger.Error(err.Error())
 			}
 		} else {
-			err := cr.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Ошибка при вводе данных, попробуйте заново"))
+			err := cr.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Ошибка при вводе данных, попробуйте заново"))
 			if err != nil {
 				logger.Error(err.Error())
 			}

@@ -11,11 +11,11 @@ import (
 )
 
 type CommandStartHandler struct {
-	bot         bot.Bot[any, tgbotapi.MessageConfig]
+	bot         bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
 	chatService chat_service.ChatRegisterService
 }
 
-func NewCommandStartHandler(bot bot.Bot[any, tgbotapi.MessageConfig], chatService chat_service.ChatRegisterService) *CommandStartHandler {
+func NewCommandStartHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig], chatService chat_service.ChatRegisterService) *CommandStartHandler {
 	return &CommandStartHandler{bot, chatService}
 }
 
@@ -23,7 +23,7 @@ func (cs *CommandStartHandler) Execute(usrCtx *state_machine.UserContext, upd tg
 	err := cs.chatService.RegisterChat(converters.ConvertChat(usrCtx, upd))
 	if err == nil {
 		usrCtx.CurrentState = state_machine.NewState(state_machine.NONE, state_machine.NewNoneState(cs.bot))
-		err = cs.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Вы успешно зарегистрировались, введите /help, чтобы получить информацию о доступных командах"))
+		err = cs.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Вы успешно зарегистрировались, введите /help, чтобы получить информацию о доступных командах"))
 		if err != nil {
 			logger.Error(err.Error())
 		}
@@ -35,7 +35,7 @@ func (cs *CommandStartHandler) Execute(usrCtx *state_machine.UserContext, upd tg
 	}
 	var servErr custom_erros.ServerError
 	if errors.As(err, &servErr) && servErr.StatusCode == 409 {
-		err = cs.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Вы уже зарегистрированы"))
+		err = cs.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Вы уже зарегистрированы"))
 		if err != nil {
 			logger.Error(err.Error())
 		}
@@ -45,7 +45,7 @@ func (cs *CommandStartHandler) Execute(usrCtx *state_machine.UserContext, upd tg
 			logger.Error(err.Error())
 		}
 	} else {
-		err = cs.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Ошибка при регистрации чата, повторите попытку позднее"))
+		err = cs.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Ошибка при регистрации чата, повторите попытку позднее"))
 		if err != nil {
 			logger.Error(err.Error())
 		}

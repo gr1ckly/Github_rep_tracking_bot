@@ -5,7 +5,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func GetTransitions(commandName string, bot bot.Bot[any, tgbotapi.MessageConfig]) map[StateName]*State {
+func GetTransitions(commandName string, bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) map[StateName]*State {
 	ans := make(map[StateName]*State)
 	switch commandName {
 	case "add":

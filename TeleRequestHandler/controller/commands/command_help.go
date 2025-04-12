@@ -8,10 +8,10 @@ import (
 )
 
 type CommandHelpHandler struct {
-	bot bot.Bot[any, tgbotapi.MessageConfig]
+	bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
 }
 
-func NewCommandHelpHandler(bot bot.Bot[any, tgbotapi.MessageConfig]) *CommandHelpHandler {
+func NewCommandHelpHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) *CommandHelpHandler {
 	return &CommandHelpHandler{bot}
 }
 
@@ -25,13 +25,13 @@ func (cs *CommandHelpHandler) Execute(usrCtx *state_machine.UserContext, upd tgb
 			builder.WriteString(cmdMap[key])
 			builder.WriteRune('\n')
 		}
-		err := cs.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, builder.String()))
+		err := cs.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, builder.String()))
 		if err != nil {
 			logger.Error(err.Error())
 			return
 		}
 	} else {
-		err := cs.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Недоступная команда"))
+		err := cs.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Недоступная команда"))
 		if err != nil {
 			logger.Error(err.Error())
 			return

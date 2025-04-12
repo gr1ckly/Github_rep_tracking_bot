@@ -13,12 +13,12 @@ import (
 var logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
 
 type TelegramMessageService struct {
-	commands map[string]commands.Command
+	commands map[string]*commands.Command
 	context  map[int64]*context2.UserContext
-	bot      bot.Bot[any, tgbotapi.MessageConfig]
+	bot      bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
 }
 
-func NewTelegramMessageService(commands map[string]commands.Command, context map[int64]*context2.UserContext, bot bot.Bot[any, tgbotapi.MessageConfig]) *TelegramMessageService {
+func NewTelegramMessageService(commands map[string]*commands.Command, context map[int64]*context2.UserContext, bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) *TelegramMessageService {
 	return &TelegramMessageService{commands, context, bot}
 }
 
@@ -53,7 +53,7 @@ func (ms *TelegramMessageService) ProcessMessages(ctx context.Context, updChan t
 				currCmd.Execute(usrCtx, upd)
 				continue
 			} else {
-				err := ms.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Некорректная команда, введите /help, чтобы узнать о доступных командах"))
+				err := ms.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Некорректная команда, введите /help, чтобы узнать о доступных командах"))
 				if err != nil {
 					logger.Error(err.Error())
 				}
