@@ -36,6 +36,6 @@ func (bot *TeleBot) GetUpdates(timeout int) tgbotapi.UpdatesChannel {
 	return updates
 }
 
-func (bot *TeleBot) SendMessage(chatId int, msg string) error {
-	return bot.SendMessage(chatId, msg)
+func (bot *TeleBot) SendMessage(msg tgbotapi.MessageConfig) error {
+	return bot.SendMessage(msg)
 }

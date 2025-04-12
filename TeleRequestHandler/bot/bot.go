@@ -1,6 +1,6 @@
 package bot
 
-type Bot[T any, S any, U any] interface {
+type Bot[T any, S any] interface {
 	GetUpdates(timeout int) T
-	SendMessage(id U, msg S) error
+	Send(msg S) error
 }

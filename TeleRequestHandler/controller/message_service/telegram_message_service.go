@@ -15,10 +15,10 @@ var logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSou
 type TelegramMessageService struct {
 	commands map[string]commands.Command
 	context  map[int64]*context2.UserContext
-	bot      bot.Bot[any, string, int64]
+	bot      bot.Bot[any, tgbotapi.MessageConfig]
 }
 
-func NewTelegramMessageService(commands map[string]commands.Command, context map[int64]*context2.UserContext, bot bot.Bot[any, string, int64]) *TelegramMessageService {
+func NewTelegramMessageService(commands map[string]commands.Command, context map[int64]*context2.UserContext, bot bot.Bot[any, tgbotapi.MessageConfig]) *TelegramMessageService {
 	return &TelegramMessageService{commands, context, bot}
 }
 
@@ -32,6 +32,14 @@ func (ms *TelegramMessageService) ProcessMessages(ctx context.Context, updChan t
 				continue
 			}
 			usrCtx, ok := ms.context[upd.Message.Chat.ID]
+			if ok && upd.Message.Command() == "cancel" {
+				usrCtx.CurrentState = context2.NewState(context2.NONE, context2.NewNoneState(ms.bot))
+				err := usrCtx.CurrentState.Start(usrCtx)
+				if err != nil {
+					logger.Error(err.Error())
+					continue
+				}
+			}
 			if !ok {
 				usrCtx = context2.GetDefaultContext(upd.Message.Chat.ID)
 				ms.context[upd.Message.Chat.ID] = usrCtx
@@ -45,7 +53,7 @@ func (ms *TelegramMessageService) ProcessMessages(ctx context.Context, updChan t
 				currCmd.Execute(usrCtx, upd)
 				continue
 			} else {
-				err := ms.bot.SendMessage(usrCtx.ChatId, "Некорректная команда, введите /help, чтобы узнать о доступных командах")
+				err := ms.bot.Send(tgbotapi.NewMessage(usrCtx.ChatId, "Некорректная команда, введите /help, чтобы узнать о доступных командах"))
 				if err != nil {
 					logger.Error(err.Error())
 				}

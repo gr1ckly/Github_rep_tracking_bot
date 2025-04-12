@@ -16,13 +16,12 @@ func NewState(stateName StateName, handler StateHandler) *State {
 }
 
 type StateHandler interface {
-	Start(chatId int64) error
+	Start(usrCtx *UserContext) error
 	Process(usrCtx *UserContext, update tgbotapi.Update) error
 }
 
 const (
-	UNAUTHORIZED StateName = iota
-	NONE
+	NONE StateName = iota
 	WAIT_LINK
 	WAIT_EVENTS
 	WAIT_TAGS
