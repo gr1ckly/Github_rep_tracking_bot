@@ -59,7 +59,7 @@ func (lt *LinkTracker) tryCheckStatusError(record *storage.ChatRepoRecord, err e
 	var statusErr Common.StatusError
 	if errors.As(err, &statusErr) {
 		if statusErr.StatusCode == 404 {
-			err = lt.storeManager.DeleteRepo(record.Chat.ChatID, record.Repo.Owner, record.Repo.Name)
+			_, err = lt.storeManager.DeleteRepo(record.Chat.ChatID, record.Repo.Owner, record.Repo.Name)
 			if err != nil {
 				return statusErr
 			}
@@ -89,7 +89,7 @@ func (lt *LinkTracker) checkLink(record *storage.ChatRepoRecord) error {
 			lt.NotifyAll(newIssueChange)
 		}
 	}
-	if !record.Repo.LastIssue.IsZero() {
+	if !record.Repo.LastPR.IsZero() {
 		prs, err := lt.ghService.GetPullRequests(record.Repo.Name, record.Repo.Owner, record.Repo.LastIssue)
 		if err != nil {
 			return lt.tryCheckStatusError(record, err)

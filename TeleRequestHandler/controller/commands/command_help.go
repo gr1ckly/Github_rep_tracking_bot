@@ -20,6 +20,7 @@ func (cs *CommandHelpHandler) Execute(usrCtx *state_machine.UserContext, upd tgb
 		cmdMap := bot.GetCommandsDescription()
 		builder := strings.Builder{}
 		for key, _ := range cmdMap {
+			builder.WriteRune('/')
 			builder.WriteString(key)
 			builder.WriteString(" : ")
 			builder.WriteString(cmdMap[key])

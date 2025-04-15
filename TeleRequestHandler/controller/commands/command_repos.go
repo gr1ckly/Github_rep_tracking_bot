@@ -41,42 +41,36 @@ func (cr *CommandReposHandler) Execute(usrCtx *state_machine.UserContext, update
 				return
 			}
 		}
+	} else {
+		usrCtx.CommandName = "repos"
 	}
 	usrCtx.CurrentState, _ = cr.stateTransitions[usrCtx.CurrentState.Name]
 	if usrCtx.CurrentState.Name == state_machine.NONE {
-		if usrCtx.Link != "" && usrCtx.Tags != nil {
-			var repos []Common.RepoDTO
-			if len(usrCtx.Tags) == 0 {
-				newRepos, err := cr.repoService.GetReposByChat(usrCtx.ChatId)
+		var repos []Common.RepoDTO
+		if len(usrCtx.Tags) == 0 {
+			newRepos, err := cr.repoService.GetReposByChat(usrCtx.ChatId)
+			if err != nil {
+				logger.Error(err.Error())
+				err = cr.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Возникла ошибка при получении репозиториев"))
 				if err != nil {
 					logger.Error(err.Error())
-					err = cr.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Возникла ошибка при получении репозиториев"))
-					if err != nil {
-						logger.Error(err.Error())
-					}
-					usrCtx.CommandName = ""
-					return
+				}
+				return
+			}
+			repos = append(repos, newRepos...)
+		} else {
+			for _, tag := range usrCtx.Tags {
+				newRepos, err := cr.repoService.GetReposByTag(usrCtx.ChatId, tag)
+				if err != nil {
+					logger.Error(err.Error())
+					continue
 				}
 				repos = append(repos, newRepos...)
-			} else {
-				for _, tag := range usrCtx.Tags {
-					newRepos, err := cr.repoService.GetReposByTag(usrCtx.ChatId, tag)
-					if err != nil {
-						logger.Error(err.Error())
-						continue
-					}
-					repos = append(repos, newRepos...)
-				}
 			}
-			err := cr.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, converters.ConvertToMessage(repos)))
-			if err != nil {
-				logger.Error(err.Error())
-			}
-		} else {
-			err := cr.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Ошибка при вводе данных, попробуйте заново"))
-			if err != nil {
-				logger.Error(err.Error())
-			}
+		}
+		err := cr.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, converters.ConvertToMessage(repos)))
+		if err != nil {
+			logger.Error(err.Error())
 		}
 	}
 	err := usrCtx.CurrentState.Start(usrCtx)

@@ -2,8 +2,10 @@ package server
 
 import (
 	"Common"
+	"Crypto_Bot/MainServer/custom_errors"
 	"Crypto_Bot/MainServer/server/dtos"
 	"Crypto_Bot/MainServer/storage"
+	"errors"
 	"time"
 )
 
@@ -41,7 +43,7 @@ func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, cha
 	var id int
 	needToUpdate := false
 	oldRepo, err := sm.repoStore.GetRepoByOwnerAndName(repo.Owner, repo.Name)
-	if oldRepo.Link == "" {
+	if oldRepo == nil {
 		id, err = sm.repoStore.AddNewRepo(repo)
 		if err != nil {
 			return -1, err
@@ -75,6 +77,11 @@ func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, cha
 	if err != nil {
 		return -1, err
 	}
+	_, err = sm.chatRepoRecordStore.GetRecordByChatAndLink(chatId, oldRepo.ID)
+	var ne custom_errors.NoValuesError
+	if !errors.As(err, &ne) {
+		return -1, custom_errors.NewAlreadyExistsError(err)
+	}
 	_, err = sm.chatRepoRecordStore.AddNewRecord(record)
 	if err != nil {
 		return -1, err
@@ -95,8 +102,8 @@ func (sm *StoreManager) DeleteRepo(chatId int64, owner string, name string) (int
 	if err != nil {
 		return -1, err
 	}
-	if len(records) == 0 {
-		return 0, nil
+	if records == nil || len(records) == 0 {
+		return num, nil
 	}
 	checkPr := false
 	checkCommit := false

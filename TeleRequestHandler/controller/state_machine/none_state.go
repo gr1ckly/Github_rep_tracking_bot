@@ -19,8 +19,7 @@ func (us *NoneState) Start(usrCtx *UserContext) error {
 	usrCtx.Events = nil
 	usrCtx.Link = ""
 	reply := tgbotapi.NewMessage(usrCtx.ChatId, "")
-	reply.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-	reply.DisableNotification = true
+	reply.ReplyMarkup = tgbotapi.NewRemoveKeyboard(false)
 	return us.bot.SendMessage(reply)
 }
 
