@@ -21,9 +21,8 @@ func (wt *WaitTagsState) Start(usrCtx *UserContext) error {
 			tgbotapi.NewInlineKeyboardButtonData("Пропустить", "skip"),
 		),
 	)
-	msg := tgbotapi.NewMessage(usrCtx.ChatId, "Введите теги для данного репозитория через пробел")
+	msg := tgbotapi.NewMessage(usrCtx.ChatId, "Введите теги через пробел")
 	msg.ReplyMarkup = buttons
-	msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 	return wt.bot.SendMessage(msg)
 }
 

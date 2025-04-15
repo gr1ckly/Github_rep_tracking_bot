@@ -67,10 +67,10 @@ func Launch(ctx context.Context) error {
 		return fmt.Errorf("Couldn't find KAFKA_GROUP_ID")
 	}
 	kafkaService, err := notification_service.NewKafkaNotificationWaiter(kafkaNetwork, kafkaAddr, kafkaTopicName, kafkaTopicPartition, kafkaTopicReplicationFactor, kafkaGroupId, bot)
-	defer kafkaService.Close()
 	if err != nil {
 		return err
 	}
+	defer kafkaService.Close()
 	telegramService := message_service.NewTelegramMessageService(commands.GetCommands(bot, chatService, repoService), map[int64]*state_machine.UserContext{}, bot)
 	botTimeout, err := strconv.Atoi(os.Getenv("BOT_TIMEOUT"))
 	if err != nil {

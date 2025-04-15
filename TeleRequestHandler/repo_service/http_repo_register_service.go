@@ -43,11 +43,41 @@ func (rs *HttpRepoRegisterService) fetch(method string, baseUrl string, params u
 }
 
 func (rs *HttpRepoRegisterService) tryType(res Common.ResultDTO[[]Common.RepoDTO]) ([]Common.RepoDTO, error) {
-	result, ok := res.Result.([]Common.RepoDTO)
+	var result []Common.RepoDTO
+	items, ok := res.Result.([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("Waiting []Common.RepoDTO")
+		return nil, fmt.Errorf("ожидался []interface{}")
 	}
+
+	for _, item := range items {
+		m, ok := item.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("ожидался map[string]interface{}")
+		}
+
+		dto := Common.RepoDTO{
+			Link:   m["link"].(string),
+			Tags:   rs.convertToStringSlice(m["tags"]),
+			Events: rs.convertToStringSlice(m["events"]),
+		}
+		result = append(result, dto)
+	}
+
 	return result, nil
+}
+
+func (rs *HttpRepoRegisterService) convertToStringSlice(v interface{}) []string {
+	raw, ok := v.([]interface{})
+	if !ok {
+		return nil
+	}
+	var result []string
+	for _, item := range raw {
+		if s, ok := item.(string); ok {
+			result = append(result, s)
+		}
+	}
+	return result
 }
 
 func (rs *HttpRepoRegisterService) AddRepo(chatId int64, dto Common.RepoDTO) error {
@@ -55,12 +85,12 @@ func (rs *HttpRepoRegisterService) AddRepo(chatId int64, dto Common.RepoDTO) err
 	if err != nil {
 		return err
 	}
-	_, err = rs.fetch("POST", fmt.Sprintf(rs.serverUrl+rs.repoApiExt+"/%v", chatId), nil, data)
+	_, err = rs.fetch("POST", fmt.Sprintf("%v/%v/%v", rs.serverUrl, rs.repoApiExt, chatId), nil, data)
 	return err
 }
 
 func (rs *HttpRepoRegisterService) GetReposByChat(chatId int64) ([]Common.RepoDTO, error) {
-	data, err := rs.fetch("GET", fmt.Sprintf(rs.serverUrl+rs.repoApiExt+"/%v", chatId), nil, nil)
+	data, err := rs.fetch("GET", fmt.Sprintf("%v/%v/%v", rs.serverUrl, rs.repoApiExt, chatId), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +103,7 @@ func (rs *HttpRepoRegisterService) GetReposByChat(chatId int64) ([]Common.RepoDT
 }
 
 func (rs *HttpRepoRegisterService) GetReposByTag(chatId int64, tag string) ([]Common.RepoDTO, error) {
-	data, err := rs.fetch("GET", fmt.Sprintf(rs.serverUrl+rs.repoApiExt+"/%v/%v", chatId, tag), nil, nil)
+	data, err := rs.fetch("GET", fmt.Sprintf("%v/%v/%v/%v", rs.serverUrl, rs.repoApiExt, chatId, tag), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +118,6 @@ func (rs *HttpRepoRegisterService) GetReposByTag(chatId int64, tag string) ([]Co
 func (rs *HttpRepoRegisterService) DeleteRepo(chatId int64, link string) error {
 	params := url.Values{}
 	params.Add("link", link)
-	_, err := rs.fetch("DELETE", fmt.Sprintf(rs.serverUrl+rs.repoApiExt+"/%v", chatId), params, nil)
+	_, err := rs.fetch("DELETE", fmt.Sprintf("%v/%v/%v", rs.serverUrl, rs.repoApiExt, chatId), params, nil)
 	return err
 }

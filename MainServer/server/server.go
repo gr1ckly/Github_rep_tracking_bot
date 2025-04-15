@@ -2,13 +2,13 @@ package server
 
 import (
 	"Common"
+	"Crypto_Bot/MainServer/custom_errors"
 	dtos2 "Crypto_Bot/MainServer/server/dtos"
 	"Crypto_Bot/MainServer/server/validators"
 	"context"
 	"encoding/json"
 	"errors"
 	mux2 "github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5/pgconn"
 	"log/slog"
 	"net/http"
 	"os"
@@ -72,14 +72,12 @@ func (serv *Server) handleAddChat(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	id, err := serv.storeManager.AddChat(newChat)
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		if pgErr.Code == "23505" {
-			errDto := Common.ErrorDTO{"Chat already register"}
-			logger.Error(err.Error())
-			serv.sendAns(errDto, 409, w)
-			return
-		}
+	var aeErr custom_errors.AlreadyExists
+	if errors.As(err, &aeErr) {
+		errDto := Common.ErrorDTO{"Chat already register"}
+		logger.Error(err.Error())
+		serv.sendAns(errDto, 409, w)
+		return
 	}
 	if err != nil {
 		errDto := Common.ErrorDTO{err.Error()}
@@ -101,6 +99,11 @@ func (serv *Server) handleDeleteChat(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	err = serv.storeManager.DeleteChat(chatId)
+	var nvErr custom_errors.NoValuesError
+	if errors.As(err, &nvErr) {
+		logger.Error(err.Error())
+		serv.sendAns(nil, 409, w)
+	}
 	if err != nil {
 		errDto := Common.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
@@ -112,7 +115,8 @@ func (serv *Server) handleDeleteChat(w http.ResponseWriter, req *http.Request) {
 
 func (serv *Server) handleGetRepos(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
-	chatId, err := strconv.ParseInt(strings.TrimSpace(req.URL.Query().Get("chat_id")), 10, 64)
+	vars := mux2.Vars(req)
+	chatId, err := strconv.ParseInt(strings.TrimSpace(vars["chat_id"]), 10, 64)
 	if err != nil {
 		errDto := Common.ErrorDTO{"Invalid chat_id format"}
 		logger.Error("Invalid chat_id format " + err.Error())
@@ -172,6 +176,11 @@ func (serv *Server) handleAddRepo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	id, err := serv.storeManager.AddRepo(repo, &repoDto, chatId)
+	var nvErr custom_errors.AlreadyExists
+	if errors.As(err, &nvErr) {
+		logger.Error(err.Error())
+		serv.sendAns(nil, 409, w)
+	}
 	if err != nil {
 		errDto := Common.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
@@ -207,6 +216,11 @@ func (serv *Server) handleDeleteRepo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	num, err := serv.storeManager.DeleteRepo(chatId, owner, name)
+	var nvErr custom_errors.NoValuesError
+	if errors.As(err, &nvErr) || num == 0 {
+		logger.Error(err.Error())
+		serv.sendAns(nil, 409, w)
+	}
 	if err != nil {
 		errDto := Common.ErrorDTO{err.Error()}
 		logger.Error(err.Error())
@@ -214,7 +228,7 @@ func (serv *Server) handleDeleteRepo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if num == 0 {
-		serv.sendAns(nil, 404, w)
+		serv.sendAns(nil, 409, w)
 		return
 	}
 	serv.sendAns(nil, 200, w)

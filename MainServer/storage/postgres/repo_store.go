@@ -1,8 +1,11 @@
 package postgres
 
 import (
+	"Crypto_Bot/MainServer/custom_errors"
 	"Crypto_Bot/MainServer/storage"
 	"context"
+	"errors"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
 )
@@ -24,26 +27,6 @@ SET NAME = $1,
 WHERE id = $7;`
 )
 
-const (
-	ADD_REPO_NAME                   = "add_repo"
-	REMOVE_REPO_NAME                = "remove_repo"
-	GET_BY_ID_REPO_NAME             = "get_by_id_repo"
-	GET_BY_OWNER_AND_NAME_REPO_NAME = "get_by_owner_and_name_repo"
-	GET_REPOS_OFFSET_NAME           = "get_repos_offset"
-	GET_REPO_NUMBER_NAME            = "get_repo_number"
-	UPDATE_REPO_NAME                = "update_repo"
-)
-
-var repoStatementMap = map[string]string{
-	ADD_REPO_NAME:                   ADD_REPO,
-	REMOVE_REPO_NAME:                REMOVE_REPO,
-	GET_BY_ID_REPO_NAME:             GET_BY_ID_REPO,
-	GET_BY_OWNER_AND_NAME_REPO_NAME: GET_BY_OWNER_AND_NAME_REPO,
-	GET_REPOS_OFFSET_NAME:           GET_REPOS_OFFSET,
-	GET_REPO_NUMBER_NAME:            GET_REPO_NUMBER,
-	UPDATE_REPO_NAME:                UPDATE_REPO,
-}
-
 type PostgresRepoStore struct {
 	pool    *pgxpool.Pool
 	timeout int
@@ -53,20 +36,6 @@ func NewPostgresRepoStore(timeout int, dbUrl string) (*PostgresRepoStore, error)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 	pool, err := pgxpool.New(ctx, dbUrl)
-	if err != nil {
-		return nil, err
-	}
-	initCtx, initCancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-	defer initCancel()
-	err = pool.AcquireFunc(initCtx, func(conn *pgxpool.Conn) error {
-		for key, _ := range repoStatementMap {
-			_, stmtErr := conn.Conn().Prepare(context.Background(), key, repoStatementMap[key])
-			if stmtErr != nil {
-				return stmtErr
-			}
-		}
-		return nil
-	})
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +53,10 @@ func (pr *PostgresRepoStore) AddNewRepo(repo *storage.Repo) (int, error) {
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	var id int
-	err = tx.QueryRow(ctx, ADD_REPO_NAME, repo.Name, repo.Owner, repo.Link, repo.LastCommit.Format(time.RFC3339), repo.LastIssue.Format(time.RFC3339), repo.LastPR.Format(time.RFC3339)).Scan(&id)
+	err = tx.QueryRow(ctx, ADD_REPO, repo.Name, repo.Owner, repo.Link, repo.LastCommit.Format(time.RFC3339), repo.LastIssue.Format(time.RFC3339), repo.LastPR.Format(time.RFC3339)).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return -1, custom_errors.NewNoValuesError(err)
+	}
 	if err != nil {
 		return -1, err
 	}
@@ -102,7 +74,7 @@ func (pr *PostgresRepoStore) RemoveRepo(id int) error {
 	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, REMOVE_REPO_NAME, id)
+	_, err = tx.Exec(ctx, REMOVE_REPO, id)
 	if err != nil {
 		return err
 	}
@@ -121,7 +93,10 @@ func (pr *PostgresRepoStore) GetRepoByID(id int) (*storage.Repo, error) {
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
 	repo := storage.Repo{}
-	err = tx.QueryRow(ctx, GET_BY_ID_REPO_NAME, id).Scan(&repo.ID, &repo.Name, &repo.Owner, &repo.Link, &repo.LastCommit, &repo.LastIssue, &repo.LastPR)
+	err = tx.QueryRow(ctx, GET_BY_ID_REPO, id).Scan(&repo.ID, &repo.Name, &repo.Owner, &repo.Link, &repo.LastCommit, &repo.LastIssue, &repo.LastPR)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, custom_errors.NewNoValuesError(err)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -138,9 +113,15 @@ func (pr *PostgresRepoStore) GetRepoByOwnerAndName(owner string, name string) (*
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pr.timeout)*time.Second)
 	defer cancel()
 	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
 	defer tx.Rollback(ctx)
 	repo := storage.Repo{}
-	err = tx.QueryRow(ctx, GET_BY_ID_REPO_NAME, name, owner).Scan(&repo.ID, &repo.Name, &repo.Owner, &repo.Link, &repo.LastCommit, &repo.LastIssue, &repo.LastPR)
+	err = tx.QueryRow(ctx, GET_BY_OWNER_AND_NAME_REPO, name, owner).Scan(&repo.ID, &repo.Name, &repo.Owner, &repo.Link, &repo.LastCommit, &repo.LastIssue, &repo.LastPR)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, custom_errors.NewNoValuesError(err)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +139,7 @@ func (pr *PostgresRepoStore) GetReposOffset(start int, limit int) ([]storage.Rep
 	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	row, err := tx.Query(ctx, GET_CHATS_OFFSET_NAME, start, limit)
+	row, err := tx.Query(ctx, GET_CHATS_OFFSET, start, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -187,6 +168,9 @@ func (pr *PostgresRepoStore) GetRepoNumber() (int, error) {
 	defer tx.Rollback(ctx)
 	var number int
 	err = tx.QueryRow(ctx, GET_REPO_NUMBER).Scan(&number)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return -1, custom_errors.NewNoValuesError(err)
+	}
 	if err != nil {
 		return -1, err
 	}
@@ -204,7 +188,7 @@ func (pr *PostgresRepoStore) UpdateRepo(repo *storage.Repo) error {
 	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, UPDATE_REPO_NAME, repo.Name, repo.Owner, repo.Link, repo.LastCommit.Format(time.RFC3339), repo.LastIssue.Format(time.RFC3339), repo.LastPR.Format(time.RFC3339), repo.ID)
+	_, err = tx.Exec(ctx, UPDATE_REPO, repo.Name, repo.Owner, repo.Link, repo.LastCommit.Format(time.RFC3339), repo.LastIssue.Format(time.RFC3339), repo.LastPR.Format(time.RFC3339), repo.ID)
 	if err != nil {
 		return err
 	}

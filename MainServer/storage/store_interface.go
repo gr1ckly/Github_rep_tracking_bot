@@ -27,5 +27,6 @@ type ChatRepoRecordStore interface {
 	GetRecordById(id int) (*ChatRepoRecord, error)
 	GetRecordOffset(start int, limit int) ([]ChatRepoRecord, error)
 	GetRecordNumber() (int, error)
+	GetRecordByChatAndLink(chatId int64, linkId int) (*ChatRepoRecord, error)
 	UpdateRecord(record *ChatRepoRecord) error
 }
