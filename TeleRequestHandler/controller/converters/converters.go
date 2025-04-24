@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-func ConvertChat(usrCtx *state_machine.UserContext, update tgbotapi.Update) Common.ChatDTO {
+func ConvertChat(usrCtx state_machine.UserContext, update tgbotapi.Update) Common.ChatDTO {
 	return Common.ChatDTO{
 		ChatID: usrCtx.ChatId,
 		Type:   update.Message.Chat.Type,
 	}
 }
 
-func ConvertRepo(usrCtx *state_machine.UserContext) Common.RepoDTO {
+func ConvertRepo(usrCtx state_machine.UserContext) Common.RepoDTO {
 	return Common.RepoDTO{
 		Link:   usrCtx.Link,
 		Tags:   usrCtx.Tags,

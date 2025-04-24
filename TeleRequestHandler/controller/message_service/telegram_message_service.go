@@ -15,60 +15,92 @@ var logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSou
 
 type TelegramMessageService struct {
 	commandMutex sync.RWMutex
-	commands     map[string]*commands.Command
+	commands     map[string]commands.Command
 	contextMutex sync.RWMutex
-	context      map[int64]*context2.UserContext
+	context      map[int64]context2.UserContext
 	bot          bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
+	wg           sync.WaitGroup
 }
 
-func NewTelegramMessageService(commands map[string]*commands.Command, context map[int64]*context2.UserContext, bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) *TelegramMessageService {
-	return &TelegramMessageService{sync.RWMutex{}, commands, sync.RWMutex{}, context, bot}
+func NewTelegramMessageService(commands map[string]commands.Command, context map[int64]context2.UserContext, bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) *TelegramMessageService {
+	return &TelegramMessageService{sync.RWMutex{}, commands, sync.RWMutex{}, context, bot, sync.WaitGroup{}}
 }
 
 func (ms *TelegramMessageService) ProcessMessages(ctx context.Context, updChan tgbotapi.UpdatesChannel) {
+	defer ms.wg.Wait()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case upd := <-updChan:
-			var currUser int64
-			if upd.Message != nil {
-				currUser = upd.Message.From.ID
-			} else if upd.CallbackQuery != nil {
-				currUser = upd.CallbackQuery.From.ID
-			} else {
-				continue
-			}
-			usrCtx, ok := ms.context[currUser]
-			if upd.Message != nil {
-				if ok && upd.Message.Command() == "cancel" {
-					usrCtx.CurrentState = context2.NewState(context2.NONE, context2.NewNoneState(ms.bot))
-					err := usrCtx.CurrentState.Start(usrCtx)
+			if upd.CallbackQuery != nil {
+				go func() {
+					ms.wg.Add(1)
+					defer ms.wg.Done()
+					ms.contextMutex.RLock()
+					currUser := ms.context[upd.CallbackQuery.From.ID]
+					ms.contextMutex.RUnlock()
+					updContext, err := ms.processMessage(upd, currUser)
 					if err != nil {
 						logger.Error(err.Error())
-						continue
 					}
-				}
-			}
-			if !ok {
-				usrCtx = context2.GetDefaultContext(currUser)
-				usrCtx.CurrentState = context2.NewState(context2.NONE, context2.NewNoneState(ms.bot))
-				ms.context[currUser] = usrCtx
-			}
-			currCmd, ok := ms.commands[usrCtx.CommandName]
-			if !ok && upd.Message != nil && upd.Message.IsCommand() {
-				currCmd, ok = ms.commands[upd.Message.Command()]
-			}
-			if ok {
-				currCmd.Execute(usrCtx, upd)
-				continue
+					ms.contextMutex.Lock()
+					ms.context[upd.CallbackQuery.From.ID] = updContext
+					ms.contextMutex.RUnlock()
+				}()
+			} else if upd.Message.IsCommand() {
+				go func() {
+					ms.wg.Add(1)
+					defer ms.wg.Done()
+					ms.contextMutex.RLock()
+					currUser := ms.context[upd.Message.From.ID]
+					ms.contextMutex.RUnlock()
+					updContext, err := ms.processCommand(upd, currUser)
+					if err != nil {
+						logger.Error(err.Error())
+					}
+					ms.contextMutex.Lock()
+					ms.context[upd.Message.From.ID] = updContext
+					ms.contextMutex.RUnlock()
+				}()
 			} else {
-				err := ms.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Некорректная команда, введите /help, чтобы узнать о доступных командах"))
-				if err != nil {
-					logger.Error(err.Error())
-				}
-				continue
+				go func() {
+					ms.wg.Add(1)
+					defer ms.wg.Done()
+					ms.contextMutex.RLock()
+					currUser := ms.context[upd.Message.From.ID]
+					ms.contextMutex.RUnlock()
+					updContext, err := ms.processMessage(upd, currUser)
+					if err != nil {
+						logger.Error(err.Error())
+					}
+					ms.contextMutex.Lock()
+					ms.context[upd.Message.From.ID] = updContext
+					ms.contextMutex.RUnlock()
+				}()
 			}
 		}
+	}
+}
+
+func (ms *TelegramMessageService) processMessage(update tgbotapi.Update, usrCtx context2.UserContext) (context2.UserContext, error) {
+	if usrCtx.CommandName != "" {
+		ms.commandMutex.RLock()
+		currCmd := ms.commands[usrCtx.CommandName]
+		ms.commandMutex.RUnlock()
+		return currCmd.Execute(usrCtx, update), nil
+	} else {
+		return usrCtx, ms.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Введите /help, чтобы увидеть список доступных команд"))
+	}
+}
+
+func (ms *TelegramMessageService) processCommand(update tgbotapi.Update, usrCtx context2.UserContext) (context2.UserContext, error) {
+	if usrCtx.CommandName != "" {
+		return usrCtx, ms.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Чтобы отменить команду введите /cancel"))
+	} else {
+		ms.commandMutex.RLock()
+		currCmd := ms.commands[usrCtx.CommandName]
+		ms.commandMutex.RUnlock()
+		return currCmd.Execute(usrCtx, update), nil
 	}
 }

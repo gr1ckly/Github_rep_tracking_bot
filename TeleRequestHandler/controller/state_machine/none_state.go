@@ -13,16 +13,16 @@ func NewNoneState(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) 
 	return &NoneState{bot}
 }
 
-func (us *NoneState) Start(usrCtx *UserContext) error {
+func (us *NoneState) Start(usrCtx UserContext) (UserContext, error) {
 	usrCtx.CommandName = ""
 	usrCtx.Tags = nil
 	usrCtx.Events = nil
 	usrCtx.Link = ""
 	reply := tgbotapi.NewMessage(usrCtx.ChatId, "")
 	reply.ReplyMarkup = tgbotapi.NewRemoveKeyboard(false)
-	return us.bot.SendMessage(reply)
+	return usrCtx, us.bot.SendMessage(reply)
 }
 
-func (us *NoneState) Process(usrCtx *UserContext, update tgbotapi.Update) error {
-	return nil
+func (us *NoneState) Process(usrCtx UserContext, update tgbotapi.Update) (UserContext, error) {
+	return usrCtx, nil
 }

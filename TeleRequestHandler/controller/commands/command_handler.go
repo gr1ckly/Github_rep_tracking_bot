@@ -6,5 +6,5 @@ import (
 )
 
 type CommandHandler interface {
-	Execute(usrCtx *state_machine.UserContext, upd tgbotapi.Update)
+	Execute(usrCtx state_machine.UserContext, upd tgbotapi.Update) state_machine.UserContext
 }

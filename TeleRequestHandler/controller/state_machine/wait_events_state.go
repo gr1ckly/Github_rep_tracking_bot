@@ -18,7 +18,7 @@ func NewWaitEventsState(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageCon
 	return &WaitEventsState{bot, map[int64]map[string]bool{}}
 }
 
-func (we *WaitEventsState) Start(usrCtx *UserContext) error {
+func (we *WaitEventsState) Start(usrCtx UserContext) (UserContext, error) {
 	builder := strings.Builder{}
 	builder.WriteString("Выберите тип отслеживаемого события через пробел ( ")
 	for _, event := range Common.Events {
@@ -26,10 +26,10 @@ func (we *WaitEventsState) Start(usrCtx *UserContext) error {
 		builder.WriteString(" ")
 	}
 	builder.WriteRune(')')
-	return we.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, builder.String()))
+	return usrCtx, we.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, builder.String()))
 }
 
-func (we *WaitEventsState) Process(usrCtx *UserContext, update tgbotapi.Update) error {
+func (we *WaitEventsState) Process(usrCtx UserContext, update tgbotapi.Update) (UserContext, error) {
 	events := strings.Split(update.Message.Text, " ")
 	for _, evnt := range events {
 		if slices.Contains(Common.Events, evnt) && !slices.Contains(usrCtx.Events, evnt) {
@@ -37,7 +37,7 @@ func (we *WaitEventsState) Process(usrCtx *UserContext, update tgbotapi.Update) 
 		}
 	}
 	if usrCtx.Events == nil || len(usrCtx.Events) == 0 {
-		return custom_erros.ProcessError{"Вы не выбрали ни одного события, введите данные еще раз"}
+		return usrCtx, custom_erros.ProcessError{"Вы не выбрали ни одного события, введите данные еще раз"}
 	}
-	return nil
+	return usrCtx, nil
 }

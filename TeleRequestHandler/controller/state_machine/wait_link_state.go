@@ -14,16 +14,16 @@ func NewWaitLinkState(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfi
 	return &WaitLinkState{bot}
 }
 
-func (wl *WaitLinkState) Start(usrCtx *UserContext) error {
+func (wl *WaitLinkState) Start(usrCtx UserContext) (UserContext, error) {
 	reply := tgbotapi.NewMessage(usrCtx.ChatId, "Введите ссылку на репозиторий")
 	reply.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
-	return wl.bot.SendMessage(reply)
+	return usrCtx, wl.bot.SendMessage(reply)
 }
 
-func (wl *WaitLinkState) Process(usrCtx *UserContext, update tgbotapi.Update) error {
+func (wl *WaitLinkState) Process(usrCtx UserContext, update tgbotapi.Update) (UserContext, error) {
 	usrCtx.Link = update.Message.Text
 	if update.Message.Text == "" {
-		return custom_erros.ProcessError{"Ошибка при вводе ссылки, попробуйте заново"}
+		return usrCtx, custom_erros.ProcessError{"Ошибка при вводе ссылки, попробуйте заново"}
 	}
-	return wl.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Текущая ссылка: "+usrCtx.Link))
+	return usrCtx, wl.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Текущая ссылка: "+usrCtx.Link))
 }
