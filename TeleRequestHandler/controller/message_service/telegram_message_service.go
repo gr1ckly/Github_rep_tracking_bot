@@ -28,6 +28,7 @@ func NewTelegramMessageService(commands map[string]commands.Command, context map
 
 func (ms *TelegramMessageService) ProcessMessages(ctx context.Context, updChan tgbotapi.UpdatesChannel) {
 	defer ms.wg.Wait()
+	var err error
 	for {
 		select {
 		case <-ctx.Done():
@@ -38,46 +39,72 @@ func (ms *TelegramMessageService) ProcessMessages(ctx context.Context, updChan t
 					ms.wg.Add(1)
 					defer ms.wg.Done()
 					ms.contextMutex.RLock()
-					currUser := ms.context[upd.CallbackQuery.From.ID]
+					currUser, ok := ms.context[upd.CallbackQuery.From.ID]
 					ms.contextMutex.RUnlock()
-					updContext, err := ms.processMessage(upd, currUser)
+					if !ok {
+						currUser = context2.GetDefaultContext(upd.CallbackQuery.From.ID)
+						currUser.CurrentState = context2.NewState(context2.NONE, context2.NewNoneState(ms.bot))
+						currUser, err = currUser.CurrentState.Start(currUser)
+						if err != nil {
+							logger.Error(err.Error())
+						}
+					}
+					currUser, err = ms.processMessage(upd, currUser)
 					if err != nil {
 						logger.Error(err.Error())
 					}
 					ms.contextMutex.Lock()
-					ms.context[upd.CallbackQuery.From.ID] = updContext
-					ms.contextMutex.RUnlock()
+					ms.context[upd.CallbackQuery.From.ID] = currUser
+					ms.contextMutex.Unlock()
 				}()
-			} else if upd.Message.IsCommand() {
-				go func() {
-					ms.wg.Add(1)
-					defer ms.wg.Done()
-					ms.contextMutex.RLock()
-					currUser := ms.context[upd.Message.From.ID]
-					ms.contextMutex.RUnlock()
-					updContext, err := ms.processCommand(upd, currUser)
-					if err != nil {
-						logger.Error(err.Error())
-					}
-					ms.contextMutex.Lock()
-					ms.context[upd.Message.From.ID] = updContext
-					ms.contextMutex.RUnlock()
-				}()
-			} else {
-				go func() {
-					ms.wg.Add(1)
-					defer ms.wg.Done()
-					ms.contextMutex.RLock()
-					currUser := ms.context[upd.Message.From.ID]
-					ms.contextMutex.RUnlock()
-					updContext, err := ms.processMessage(upd, currUser)
-					if err != nil {
-						logger.Error(err.Error())
-					}
-					ms.contextMutex.Lock()
-					ms.context[upd.Message.From.ID] = updContext
-					ms.contextMutex.RUnlock()
-				}()
+			} else if upd.Message != nil {
+				if upd.Message.IsCommand() {
+					go func() {
+						ms.wg.Add(1)
+						defer ms.wg.Done()
+						ms.contextMutex.RLock()
+						currUser, ok := ms.context[upd.Message.From.ID]
+						ms.contextMutex.RUnlock()
+						if !ok {
+							currUser = context2.GetDefaultContext(upd.Message.From.ID)
+							currUser.CurrentState = context2.NewState(context2.NONE, context2.NewNoneState(ms.bot))
+							currUser, err = currUser.CurrentState.Start(currUser)
+							if err != nil {
+								logger.Error(err.Error())
+							}
+						}
+						currUser, err = ms.processCommand(upd, currUser)
+						if err != nil {
+							logger.Error(err.Error())
+						}
+						ms.contextMutex.Lock()
+						ms.context[upd.Message.From.ID] = currUser
+						ms.contextMutex.Unlock()
+					}()
+				} else {
+					go func() {
+						ms.wg.Add(1)
+						defer ms.wg.Done()
+						ms.contextMutex.RLock()
+						currUser, ok := ms.context[upd.Message.From.ID]
+						ms.contextMutex.RUnlock()
+						if !ok {
+							currUser = context2.GetDefaultContext(upd.Message.From.ID)
+							currUser.CurrentState = context2.NewState(context2.NONE, context2.NewNoneState(ms.bot))
+							currUser, err = currUser.CurrentState.Start(currUser)
+							if err != nil {
+								logger.Error(err.Error())
+							}
+						}
+						currUser, err := ms.processMessage(upd, currUser)
+						if err != nil {
+							logger.Error(err.Error())
+						}
+						ms.contextMutex.Lock()
+						ms.context[upd.Message.From.ID] = currUser
+						ms.contextMutex.Unlock()
+					}()
+				}
 			}
 		}
 	}
@@ -95,12 +122,13 @@ func (ms *TelegramMessageService) processMessage(update tgbotapi.Update, usrCtx 
 }
 
 func (ms *TelegramMessageService) processCommand(update tgbotapi.Update, usrCtx context2.UserContext) (context2.UserContext, error) {
-	if usrCtx.CommandName != "" {
+	if usrCtx.CommandName != "" && update.Message.Command() != "cancel" {
 		return usrCtx, ms.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Чтобы отменить команду введите /cancel"))
 	} else {
 		ms.commandMutex.RLock()
-		currCmd := ms.commands[usrCtx.CommandName]
+		currCmd := ms.commands[update.Message.Command()]
 		ms.commandMutex.RUnlock()
+		usrCtx.CommandName = update.Message.Command()
 		return currCmd.Execute(usrCtx, update), nil
 	}
 }

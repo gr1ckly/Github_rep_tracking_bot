@@ -38,5 +38,10 @@ func (cs CommandHelpHandler) Execute(usrCtx state_machine.UserContext, upd tgbot
 			return usrCtx
 		}
 	}
+	usrCtx.CurrentState = state_machine.NewState(state_machine.NONE, state_machine.NewNoneState(cs.bot))
+	usrCtx, err := usrCtx.CurrentState.Start(usrCtx)
+	if err != nil {
+		logger.Error(err.Error())
+	}
 	return usrCtx
 }

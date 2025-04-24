@@ -16,7 +16,7 @@ func NewCommandCancelHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.Messa
 
 func (cc CommandCancelHandler) Execute(usrCtx state_machine.UserContext, upd tgbotapi.Update) state_machine.UserContext {
 	if usrCtx.CommandName != "" {
-		err := cc.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Отмена /"+usrCtx.CommandName))
+		err := cc.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Отмена текущей команды"))
 		if err != nil {
 			logger.Error(err.Error())
 		}

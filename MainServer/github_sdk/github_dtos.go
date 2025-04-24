@@ -107,12 +107,13 @@ type CommitAuthor struct {
 }
 
 type User struct {
-	Login     string `json:"login"`
-	ID        int    `json:"id"`
-	NodeID    string `json:"node_id"`
-	AvatarURL string `json:"avatar_url"`
-	URL       string `json:"url"`
-	HTMLURL   string `json:"html_url"`
+	Login     string    `json:"login"`
+	ID        int       `json:"id"`
+	NodeID    string    `json:"node_id"`
+	AvatarURL string    `json:"avatar_url"`
+	URL       string    `json:"url"`
+	HTMLURL   string    `json:"html_url"`
+	Date      time.Time `json:"date"`
 }
 
 type Tree struct {

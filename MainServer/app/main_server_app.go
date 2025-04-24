@@ -116,7 +116,7 @@ func Launch(ctx context.Context) {
 		return
 	}
 	kafkaNotificationManager, err := link_tracker.NewNotificationService(kafkaTimeout, kafkaNetwork, kafkaAddr, kafkaTopicName, kafkaTopicPartition, kafkaTopicReplicationFactor)
-	linkTracker, err := link_tracker.NewLinkTracker(ghService, storeManager, chatRepoRecordStore, batchSize)
+	linkTracker, err := link_tracker.NewLinkTracker(ghService, storeManager, chatRepoRecordStore, repoStore, batchSize)
 	if err != nil {
 		logger.Error(err.Error())
 	}

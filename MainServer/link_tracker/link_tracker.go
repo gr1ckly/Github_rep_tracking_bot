@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"time"
 )
 
 var logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
@@ -19,17 +20,18 @@ type LinkTracker struct {
 	ghService    github_sdk.GithubService
 	storeManager *server.StoreManager
 	recordsStore storage.ChatRepoRecordStore
+	repoStore    storage.RepoStore
 	batchSize    int
 	observers    []Observer[any]
 	scheduler    gocron.Scheduler
 }
 
-func NewLinkTracker(ghService github_sdk.GithubService, storeManager *server.StoreManager, recordsStore storage.ChatRepoRecordStore, batchSize int, observers ...Observer[any]) (*LinkTracker, error) {
+func NewLinkTracker(ghService github_sdk.GithubService, storeManager *server.StoreManager, recordsStore storage.ChatRepoRecordStore, repoStore storage.RepoStore, batchSize int, observers ...Observer[any]) (*LinkTracker, error) {
 	scheduler, err := gocron.NewScheduler()
 	if err != nil {
 		return nil, err
 	}
-	return &LinkTracker{ghService, storeManager, recordsStore, batchSize, observers, scheduler}, nil
+	return &LinkTracker{ghService, storeManager, recordsStore, repoStore, batchSize, observers, scheduler}, nil
 }
 
 func (lt *LinkTracker) checkAllLinks() interface{} {
@@ -38,9 +40,10 @@ func (lt *LinkTracker) checkAllLinks() interface{} {
 		return nil
 	}
 	wg := sync.WaitGroup{}
+	defer wg.Wait()
 	for i := 0; i < chatNumber; i += lt.batchSize {
-		wg.Add(1)
 		go func(start int, limit int) {
+			wg.Add(1)
 			defer wg.Done()
 			records, _ := lt.recordsStore.GetRecordOffset(start, limit)
 			for _, record := range records {
@@ -51,7 +54,6 @@ func (lt *LinkTracker) checkAllLinks() interface{} {
 			}
 		}(i, chatNumber)
 	}
-	wg.Wait()
 	return nil
 }
 
@@ -69,13 +71,18 @@ func (lt *LinkTracker) tryCheckStatusError(record *storage.ChatRepoRecord, err e
 }
 
 func (lt *LinkTracker) checkLink(record *storage.ChatRepoRecord) error {
+	needToUpdateRepo := false
 	if !record.Repo.LastCommit.IsZero() {
 		commits, err := lt.ghService.GetCommits(record.Repo.Name, record.Repo.Owner, record.Repo.LastCommit)
 		if err != nil {
 			return lt.tryCheckStatusError(record, err)
 		}
 		for _, commit := range commits {
-			newCommitChange := dtos.ConvertCommit(&commit, record.Chat.ChatID)
+			newCommitChange := dtos.ConvertCommit(&commit, record)
+			if commit.Committer.Date.After(record.Repo.LastCommit) {
+				record.Repo.LastCommit = commit.Committer.Date.Add(1 * time.Second)
+				needToUpdateRepo = true
+			}
 			lt.NotifyAll(newCommitChange)
 		}
 	}
@@ -85,19 +92,30 @@ func (lt *LinkTracker) checkLink(record *storage.ChatRepoRecord) error {
 			return lt.tryCheckStatusError(record, err)
 		}
 		for _, issue := range issues {
-			newIssueChange := dtos.ConvertIssue(&issue, record.Chat.ChatID)
+			newIssueChange := dtos.ConvertIssue(&issue, record)
+			if issue.UpdatedAt.After(record.Repo.LastCommit) {
+				record.Repo.LastIssue = issue.UpdatedAt.Add(1 * time.Second)
+				needToUpdateRepo = true
+			}
 			lt.NotifyAll(newIssueChange)
 		}
 	}
 	if !record.Repo.LastPR.IsZero() {
-		prs, err := lt.ghService.GetPullRequests(record.Repo.Name, record.Repo.Owner, record.Repo.LastIssue)
+		prs, err := lt.ghService.GetPullRequests(record.Repo.Name, record.Repo.Owner, record.Repo.LastPR)
 		if err != nil {
 			return lt.tryCheckStatusError(record, err)
 		}
 		for _, pr := range prs {
-			newPRChange := dtos.ConvertPR(&pr, record.Chat.ChatID)
+			newPRChange := dtos.ConvertPR(&pr, record)
+			if pr.UpdatedAt.After(record.Repo.LastCommit) {
+				record.Repo.LastPR = pr.UpdatedAt.Add(1 * time.Second)
+				needToUpdateRepo = true
+			}
 			lt.NotifyAll(newPRChange)
 		}
+	}
+	if needToUpdateRepo {
+		return lt.repoStore.UpdateRepo(record.Repo)
 	}
 	return nil
 }
