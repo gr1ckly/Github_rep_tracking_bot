@@ -11,11 +11,11 @@ type CommandHelpHandler struct {
 	bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
 }
 
-func NewCommandHelpHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) *CommandHelpHandler {
-	return &CommandHelpHandler{bot}
+func NewCommandHelpHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]) CommandHelpHandler {
+	return CommandHelpHandler{bot}
 }
 
-func (cs *CommandHelpHandler) Execute(usrCtx *state_machine.UserContext, upd tgbotapi.Update) {
+func (cs CommandHelpHandler) Execute(usrCtx state_machine.UserContext, upd tgbotapi.Update) state_machine.UserContext {
 	if usrCtx.CurrentState.Name == state_machine.NONE {
 		cmdMap := bot.GetCommandsDescription()
 		builder := strings.Builder{}
@@ -29,13 +29,14 @@ func (cs *CommandHelpHandler) Execute(usrCtx *state_machine.UserContext, upd tgb
 		err := cs.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, builder.String()))
 		if err != nil {
 			logger.Error(err.Error())
-			return
+			return usrCtx
 		}
 	} else {
 		err := cs.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Недоступная команда"))
 		if err != nil {
 			logger.Error(err.Error())
-			return
+			return usrCtx
 		}
 	}
+	return usrCtx
 }

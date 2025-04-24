@@ -12,16 +12,16 @@ import (
 type CommandDelHandler struct {
 	bot              bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig]
 	repoService      repo_service.RepoRegisterService
-	stateTransitions map[state_machine.StateName]*state_machine.State
+	stateTransitions map[state_machine.StateName]state_machine.State
 }
 
-func NewCommandDelHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig], repoService repo_service.RepoRegisterService) *CommandDelHandler {
-	return &CommandDelHandler{bot, repoService, state_machine.GetTransitions("del", bot)}
+func NewCommandDelHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig], repoService repo_service.RepoRegisterService) CommandDelHandler {
+	return CommandDelHandler{bot, repoService, state_machine.GetTransitions("del", bot)}
 }
 
-func (ca *CommandDelHandler) Execute(usrCtx *state_machine.UserContext, update tgbotapi.Update) {
+func (ca CommandDelHandler) Execute(usrCtx state_machine.UserContext, update tgbotapi.Update) state_machine.UserContext {
 	if usrCtx.CurrentState.Name != state_machine.NONE {
-		err := usrCtx.CurrentState.Process(usrCtx, update)
+		usrCtx, err := usrCtx.CurrentState.Process(usrCtx, update)
 		if err != nil {
 			logger.Error(err.Error())
 			var prErr custom_erros.ProcessError
@@ -32,15 +32,13 @@ func (ca *CommandDelHandler) Execute(usrCtx *state_machine.UserContext, update t
 						logger.Error(err.Error())
 					}
 				}
-				err = usrCtx.CurrentState.Start(usrCtx)
+				usrCtx, err = usrCtx.CurrentState.Start(usrCtx)
 				if err != nil {
 					logger.Error(err.Error())
 				}
-				return
+				return usrCtx
 			}
 		}
-	} else {
-		usrCtx.CommandName = "del"
 	}
 	usrCtx.CurrentState, _ = ca.stateTransitions[usrCtx.CurrentState.Name]
 	if usrCtx.CurrentState.Name == state_machine.NONE {
@@ -65,7 +63,7 @@ func (ca *CommandDelHandler) Execute(usrCtx *state_machine.UserContext, update t
 						logger.Error(err.Error())
 					}
 				}
-				return
+				return usrCtx
 			}
 			if err == nil {
 				err = ca.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Репозиторий удален из отслеживания"))
@@ -85,10 +83,12 @@ func (ca *CommandDelHandler) Execute(usrCtx *state_machine.UserContext, update t
 			}
 		}
 		usrCtx.CommandName = ""
+		return usrCtx
 	} else {
-		err := usrCtx.CurrentState.Start(usrCtx)
+		usrCtx, err := usrCtx.CurrentState.Start(usrCtx)
 		if err != nil {
 			logger.Error(err.Error())
 		}
+		return usrCtx
 	}
 }

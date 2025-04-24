@@ -15,11 +15,11 @@ type CommandStartHandler struct {
 	chatService chat_service.ChatRegisterService
 }
 
-func NewCommandStartHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig], chatService chat_service.ChatRegisterService) *CommandStartHandler {
-	return &CommandStartHandler{bot, chatService}
+func NewCommandStartHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfig], chatService chat_service.ChatRegisterService) CommandStartHandler {
+	return CommandStartHandler{bot, chatService}
 }
 
-func (cs *CommandStartHandler) Execute(usrCtx *state_machine.UserContext, upd tgbotapi.Update) {
+func (cs CommandStartHandler) Execute(usrCtx state_machine.UserContext, upd tgbotapi.Update) state_machine.UserContext {
 	err := cs.chatService.RegisterChat(converters.ConvertChat(usrCtx, upd))
 	if err == nil {
 		usrCtx.CurrentState = state_machine.NewState(state_machine.NONE, state_machine.NewNoneState(cs.bot))
@@ -27,11 +27,11 @@ func (cs *CommandStartHandler) Execute(usrCtx *state_machine.UserContext, upd tg
 		if err != nil {
 			logger.Error(err.Error())
 		}
-		err = usrCtx.CurrentState.Start(usrCtx)
+		usrCtx, err = usrCtx.CurrentState.Start(usrCtx)
 		if err != nil {
 			logger.Error(err.Error())
 		}
-		return
+		return usrCtx
 	}
 	var servErr custom_erros.ServerError
 	if errors.As(err, &servErr) && servErr.StatusCode == 409 {
@@ -40,7 +40,7 @@ func (cs *CommandStartHandler) Execute(usrCtx *state_machine.UserContext, upd tg
 			logger.Error(err.Error())
 		}
 		usrCtx.CurrentState = state_machine.NewState(state_machine.NONE, state_machine.NewNoneState(cs.bot))
-		err = usrCtx.CurrentState.Start(usrCtx)
+		usrCtx, err = usrCtx.CurrentState.Start(usrCtx)
 		if err != nil {
 			logger.Error(err.Error())
 		}
@@ -50,4 +50,5 @@ func (cs *CommandStartHandler) Execute(usrCtx *state_machine.UserContext, upd tg
 			logger.Error(err.Error())
 		}
 	}
+	return usrCtx
 }

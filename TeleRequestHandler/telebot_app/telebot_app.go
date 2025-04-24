@@ -71,7 +71,7 @@ func Launch(ctx context.Context) error {
 		return err
 	}
 	defer kafkaService.Close()
-	telegramService := message_service.NewTelegramMessageService(commands.GetCommands(bot, chatService, repoService), map[int64]*state_machine.UserContext{}, bot)
+	telegramService := message_service.NewTelegramMessageService(commands.GetCommands(bot, chatService, repoService), map[int64]state_machine.UserContext{}, bot)
 	botTimeout, err := strconv.Atoi(os.Getenv("BOT_TIMEOUT"))
 	if err != nil {
 		return err

@@ -15,7 +15,7 @@ func NewWaitTagsState(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageConfi
 	return &WaitTagsState{bot}
 }
 
-func (wt *WaitTagsState) Start(usrCtx *UserContext) error {
+func (wt *WaitTagsState) Start(usrCtx UserContext) (UserContext, error) {
 	buttons := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData("Пропустить", "skip"),
@@ -23,19 +23,19 @@ func (wt *WaitTagsState) Start(usrCtx *UserContext) error {
 	)
 	msg := tgbotapi.NewMessage(usrCtx.ChatId, "Введите теги через пробел")
 	msg.ReplyMarkup = buttons
-	return wt.bot.SendMessage(msg)
+	return usrCtx, wt.bot.SendMessage(msg)
 }
 
-func (wt *WaitTagsState) Process(usrCtx *UserContext, update tgbotapi.Update) error {
+func (wt *WaitTagsState) Process(usrCtx UserContext, update tgbotapi.Update) (UserContext, error) {
 	if update.CallbackQuery != nil {
 		switch update.CallbackQuery.Data {
 		case "skip":
 			usrCtx.Tags = []string{}
-			return nil
+			return usrCtx, nil
 		default:
-			return custom_erros.ProcessError{"Ошибка при вводе тегов, попробуйте заново"}
+			return usrCtx, custom_erros.ProcessError{"Ошибка при вводе тегов, попробуйте заново"}
 		}
 	}
 	usrCtx.Tags = strings.Split(update.Message.Text, " ")
-	return wt.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Теги для данного репозитория: "+strings.Join(usrCtx.Tags, " ")))
+	return usrCtx, wt.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Теги для данного репозитория: "+strings.Join(usrCtx.Tags, " ")))
 }

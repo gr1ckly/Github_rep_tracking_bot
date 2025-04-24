@@ -11,13 +11,13 @@ type State struct {
 	StateHandler
 }
 
-func NewState(stateName StateName, handler StateHandler) *State {
-	return &State{stateName, handler}
+func NewState(stateName StateName, handler StateHandler) State {
+	return State{stateName, handler}
 }
 
 type StateHandler interface {
-	Start(usrCtx *UserContext) error
-	Process(usrCtx *UserContext, update tgbotapi.Update) error
+	Start(usrCtx UserContext) (UserContext, error)
+	Process(usrCtx UserContext, update tgbotapi.Update) (UserContext, error)
 }
 
 const (
