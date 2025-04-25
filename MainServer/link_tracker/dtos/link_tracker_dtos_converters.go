@@ -13,7 +13,7 @@ func ConvertCommit(commit *github_sdk.Commit, record *storage.ChatRepoRecord) Co
 		Event:     Common.Commit,
 		Author:    commit.Commit.Author.Name,
 		Title:     commit.Commit.Message,
-		UpdatedAt: commit.Committer.Date,
+		UpdatedAt: commit.Commit.Committer.Date,
 	}
 }
 

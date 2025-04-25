@@ -25,7 +25,7 @@ func NewAlreadyExistsError(err error) AlreadyExists {
 }
 
 func (ae AlreadyExists) Error() string {
-	return "No values error: " + ae.err.Error()
+	return "Value already exists: " + ae.err.Error()
 }
 
 func (ae AlreadyExists) Unwrap() error {

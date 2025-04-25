@@ -26,7 +26,7 @@ func NewHttpGithubService(apiUrl string, token string, acceptFormat string, apiV
 }
 
 func (ghService *HttpGithubService) setHeaders(req *http.Request) {
-	req.Header.Set("Authorization", ghService.token)
+	req.Header.Set("Authorization", "token "+ghService.token)
 	req.Header.Set("Accept", ghService.acceptFormat)
 	req.Header.Set("X-GitHub-Api-Version", ghService.apiVersion)
 }
@@ -86,7 +86,7 @@ func (ghService *HttpGithubService) GetCommits(repoName string, owner string, si
 		return nil, err
 	}
 	err = json.Unmarshal(data, &commits)
-	return nil, err
+	return commits, err
 }
 func (ghService *HttpGithubService) GetIssues(repoName string, owner string, since time.Time) ([]Issue, error) {
 	var issues []Issue

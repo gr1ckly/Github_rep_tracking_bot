@@ -37,5 +37,11 @@ func (wt *WaitTagsState) Process(usrCtx UserContext, update tgbotapi.Update) (Us
 		}
 	}
 	usrCtx.Tags = strings.Split(update.Message.Text, " ")
-	return usrCtx, wt.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Теги для данного репозитория: "+strings.Join(usrCtx.Tags, " ")))
+	var answer string
+	if usrCtx.Tags != nil && len(usrCtx.Tags) > 0 {
+		answer = "Теги для данного репозитория: #" + strings.Join(usrCtx.Tags, " #")
+	} else {
+		answer = "Теги для данного репозитория: "
+	}
+	return usrCtx, wt.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, answer))
 }

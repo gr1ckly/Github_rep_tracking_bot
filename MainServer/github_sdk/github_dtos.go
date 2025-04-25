@@ -101,9 +101,9 @@ type CommitInfo struct {
 }
 
 type CommitAuthor struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Date  string `json:"date"`
+	Name  string    `json:"name"`
+	Email string    `json:"email"`
+	Date  time.Time `json:"date"`
 }
 
 type User struct {

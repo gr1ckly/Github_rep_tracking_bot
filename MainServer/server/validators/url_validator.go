@@ -2,11 +2,13 @@ package validators
 
 import (
 	"regexp"
+	"sync"
 )
 
 type UrlValidator struct {
-	regex   *regexp.Regexp
-	checker Checker[string, bool]
+	regex        *regexp.Regexp
+	checkerMutex sync.Mutex
+	checker      Checker[string, bool]
 }
 
 func NewUrlValidator(pattern string, checker Checker[string, bool]) (*UrlValidator, error) {
@@ -14,9 +16,14 @@ func NewUrlValidator(pattern string, checker Checker[string, bool]) (*UrlValidat
 	if err != nil {
 		return nil, err
 	}
-	return &UrlValidator{regex: regex, checker: checker}, nil
+	return &UrlValidator{regex: regex, checker: checker, checkerMutex: sync.Mutex{}}, nil
 }
 
 func (val *UrlValidator) Check(link string) bool {
-	return val.regex.MatchString(link) && val.checker.Check(link)
+	val.checkerMutex.Lock()
+	defer val.checkerMutex.Unlock()
+	if !val.checker.Check(link) {
+		return false
+	}
+	return val.regex.MatchString(link)
 }

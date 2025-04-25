@@ -21,7 +21,7 @@ var logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSou
 type Server struct {
 	urlValidator *validators.UrlValidator
 	storeManager *StoreManager
-	server       *http.Server
+	server       http.Server
 }
 
 func (serv *Server) sendAns(msg any, statusCode int, w http.ResponseWriter) {
@@ -156,7 +156,6 @@ func (serv *Server) handleAddRepo(w http.ResponseWriter, req *http.Request) {
 	}
 	if !serv.urlValidator.Check(repoDto.Link) {
 		errDto := Common.ErrorDTO{"Invalid link"}
-		logger.Error(err.Error())
 		serv.sendAns(errDto, 400, w)
 		return
 	}
@@ -177,7 +176,7 @@ func (serv *Server) handleAddRepo(w http.ResponseWriter, req *http.Request) {
 	}
 	id, err := serv.storeManager.AddRepo(repo, &repoDto, chatId)
 	var nvErr custom_errors.AlreadyExists
-	if errors.As(err, &nvErr) {
+	if err != nil && errors.As(err, &nvErr) {
 		logger.Error(err.Error())
 		serv.sendAns(nil, 409, w)
 	}
@@ -283,7 +282,7 @@ func BuildServer(serverUrl string, urlValidator *validators.UrlValidator, storeM
 	router.HandleFunc("/repo/{chat_id}/{tag}", server.handleGetReposByTag).Methods("GET")
 	router.HandleFunc("/repo/{chat_id}", server.handleAddRepo).Methods("POST")
 	router.HandleFunc("/repo/{chat_id}", server.handleDeleteRepo).Methods("DELETE")
-	svr := &http.Server{
+	svr := http.Server{
 		Addr:    serverUrl,
 		Handler: router,
 	}

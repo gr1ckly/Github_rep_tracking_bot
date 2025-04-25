@@ -21,8 +21,9 @@ func NewCommandAddHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.MessageC
 }
 
 func (ca CommandAddHandler) Execute(usrCtx state_machine.UserContext, update tgbotapi.Update) state_machine.UserContext {
+	var err error
 	if usrCtx.CurrentState.Name != state_machine.NONE {
-		usrCtx, err := usrCtx.CurrentState.Process(usrCtx, update)
+		usrCtx, err = usrCtx.CurrentState.Process(usrCtx, update)
 		if err != nil {
 			logger.Error(err.Error())
 			var prErr custom_erros.ProcessError
@@ -45,7 +46,7 @@ func (ca CommandAddHandler) Execute(usrCtx state_machine.UserContext, update tgb
 	if usrCtx.CurrentState.Name == state_machine.NONE {
 		if usrCtx.Link != "" && usrCtx.Events != nil {
 			repo := converters.ConvertRepo(usrCtx)
-			err := ca.repoService.AddRepo(usrCtx.ChatId, repo)
+			err = ca.repoService.AddRepo(usrCtx.ChatId, repo)
 			var servErr custom_erros.ServerError
 			if errors.As(err, &servErr) && servErr.StatusCode == 409 {
 				if servErr.StatusCode == 409 {
@@ -65,10 +66,8 @@ func (ca CommandAddHandler) Execute(usrCtx state_machine.UserContext, update tgb
 						logger.Error(err.Error())
 					}
 				}
-				return usrCtx
-			}
-			if err == nil {
-				err = ca.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Репозиторий удален из отслеживания"))
+			} else if err == nil {
+				err = ca.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Репозиторий добавлен в отслеживание"))
 				if err != nil {
 					logger.Error(err.Error())
 				}
@@ -79,13 +78,13 @@ func (ca CommandAddHandler) Execute(usrCtx state_machine.UserContext, update tgb
 				}
 			}
 		} else {
-			err := ca.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Ошибка при вводе данных, попробуйте заново"))
+			err = ca.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Ошибка при вводе данных, попробуйте заново"))
 			if err != nil {
 				logger.Error(err.Error())
 			}
 		}
 	}
-	usrCtx, err := usrCtx.CurrentState.Start(usrCtx)
+	usrCtx, err = usrCtx.CurrentState.Start(usrCtx)
 	if err != nil {
 		logger.Error(err.Error())
 	}

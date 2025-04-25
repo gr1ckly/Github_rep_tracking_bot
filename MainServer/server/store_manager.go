@@ -5,48 +5,67 @@ import (
 	"Crypto_Bot/MainServer/custom_errors"
 	"Crypto_Bot/MainServer/server/dtos"
 	"Crypto_Bot/MainServer/storage"
-	"errors"
+	"fmt"
+	"sync"
 	"time"
 )
 
 type StoreManager struct {
+	chatStoreMutex      sync.Mutex
 	chatStore           storage.ChatStore
+	repoStoreMutex      sync.Mutex
 	repoStore           storage.RepoStore
+	recordMutex         sync.Mutex
 	chatRepoRecordStore storage.ChatRepoRecordStore
 }
 
 func NewStoreManager(chatStore storage.ChatStore, repoStore storage.RepoStore, chatRepoRecordStore storage.ChatRepoRecordStore) *StoreManager {
-	return &StoreManager{chatStore, repoStore, chatRepoRecordStore}
+	return &StoreManager{sync.Mutex{}, chatStore, sync.Mutex{}, repoStore, sync.Mutex{}, chatRepoRecordStore}
 }
 
 func (sm *StoreManager) GetChats() ([]storage.Chat, error) {
+	sm.chatStoreMutex.Lock()
+	defer sm.chatStoreMutex.Unlock()
 	chatNumber, err := sm.chatStore.GetChatNumber()
 	if err != nil {
 		return nil, err
 	}
-	return sm.chatStore.GetChatsOffset(0, chatNumber)
+	ans, err := sm.chatStore.GetChatsOffset(0, chatNumber)
+	return ans, err
 }
 
 func (sm *StoreManager) AddChat(chat *storage.Chat) (int64, error) {
-	return sm.chatStore.AddNewChat(chat)
+	sm.chatStoreMutex.Lock()
+	defer sm.chatStoreMutex.Unlock()
+	id, err := sm.chatStore.AddNewChat(chat)
+	return id, err
 }
 
 func (sm *StoreManager) DeleteChat(chatId int64) error {
+	sm.chatStoreMutex.Lock()
+	defer sm.chatStoreMutex.Unlock()
 	return sm.chatStore.RemoveChat(chatId)
 }
 
 func (sm *StoreManager) GetReposByChat(chatId int64) ([]storage.ChatRepoRecord, error) {
-	return sm.chatRepoRecordStore.GetRecordByChat(chatId)
+	sm.recordMutex.Lock()
+	defer sm.recordMutex.Unlock()
+	ans, err := sm.chatRepoRecordStore.GetRecordByChat(chatId)
+	return ans, err
 }
 
 func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, chatId int64) (int, error) {
 	var id int
 	needToUpdate := false
+	sm.repoStoreMutex.Lock()
+	defer sm.repoStoreMutex.Unlock()
 	oldRepo, err := sm.repoStore.GetRepoByOwnerAndName(repo.Owner, repo.Name)
 	if oldRepo == nil {
 		id, err = sm.repoStore.AddNewRepo(repo)
 		if err != nil {
 			return -1, err
+		} else {
+			return id, nil
 		}
 	} else {
 		if oldRepo.LastPR.IsZero() && !repo.LastPR.IsZero() {
@@ -69,6 +88,8 @@ func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, cha
 		}
 		id = oldRepo.ID
 	}
+	sm.chatStoreMutex.Lock()
+	defer sm.chatStoreMutex.Unlock()
 	chat, err := sm.chatStore.GetChatByID(chatId)
 	if err != nil {
 		return -1, nil
@@ -77,10 +98,11 @@ func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, cha
 	if err != nil {
 		return -1, err
 	}
-	_, err = sm.chatRepoRecordStore.GetRecordByChatAndLink(chatId, oldRepo.ID)
-	var ne custom_errors.NoValuesError
-	if !errors.As(err, &ne) {
-		return -1, custom_errors.NewAlreadyExistsError(err)
+	sm.recordMutex.Lock()
+	defer sm.recordMutex.Unlock()
+	oldRecord, err := sm.chatRepoRecordStore.GetRecordByChatAndLink(chatId, oldRepo.ID)
+	if oldRecord != nil {
+		return -1, custom_errors.NewAlreadyExistsError(fmt.Errorf("Repo already tracking"))
 	}
 	_, err = sm.chatRepoRecordStore.AddNewRecord(record)
 	if err != nil {
@@ -90,10 +112,14 @@ func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, cha
 }
 
 func (sm *StoreManager) DeleteRepo(chatId int64, owner string, name string) (int64, error) {
+	sm.repoStoreMutex.Lock()
+	defer sm.repoStoreMutex.Unlock()
 	repo, err := sm.repoStore.GetRepoByOwnerAndName(owner, name)
 	if err != nil {
 		return -1, err
 	}
+	sm.recordMutex.Lock()
+	defer sm.recordMutex.Unlock()
 	num, err := sm.chatRepoRecordStore.RemoveRecord(chatId, repo.ID)
 	if err != nil {
 		return -1, err
@@ -143,6 +169,8 @@ func (sm *StoreManager) DeleteRepo(chatId int64, owner string, name string) (int
 }
 
 func (sm *StoreManager) GetReposByTag(chatId int64, tag string) ([]*storage.ChatRepoRecord, error) {
+	sm.recordMutex.Lock()
+	defer sm.recordMutex.Unlock()
 	records, err := sm.chatRepoRecordStore.GetRecordByChat(chatId)
 	if err != nil {
 		return nil, err

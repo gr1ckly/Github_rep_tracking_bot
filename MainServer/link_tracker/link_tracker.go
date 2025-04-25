@@ -17,13 +17,17 @@ import (
 var logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
 
 type LinkTracker struct {
-	ghService    github_sdk.GithubService
-	storeManager *server.StoreManager
-	recordsStore storage.ChatRepoRecordStore
-	repoStore    storage.RepoStore
-	batchSize    int
-	observers    []Observer[any]
-	scheduler    gocron.Scheduler
+	ghServiceMutex    sync.Mutex
+	ghService         github_sdk.GithubService
+	storeManagerMutex sync.Mutex
+	storeManager      *server.StoreManager
+	recordStoreMutex  sync.Mutex
+	recordsStore      storage.ChatRepoRecordStore
+	repoStoreMutex    sync.Mutex
+	repoStore         storage.RepoStore
+	batchSize         int
+	observers         []Observer[any]
+	scheduler         gocron.Scheduler
 }
 
 func NewLinkTracker(ghService github_sdk.GithubService, storeManager *server.StoreManager, recordsStore storage.ChatRepoRecordStore, repoStore storage.RepoStore, batchSize int, observers ...Observer[any]) (*LinkTracker, error) {
@@ -31,11 +35,13 @@ func NewLinkTracker(ghService github_sdk.GithubService, storeManager *server.Sto
 	if err != nil {
 		return nil, err
 	}
-	return &LinkTracker{ghService, storeManager, recordsStore, repoStore, batchSize, observers, scheduler}, nil
+	return &LinkTracker{sync.Mutex{}, ghService, sync.Mutex{}, storeManager, sync.Mutex{}, recordsStore, sync.Mutex{}, repoStore, batchSize, observers, scheduler}, nil
 }
 
 func (lt *LinkTracker) checkAllLinks() interface{} {
+	lt.recordStoreMutex.Lock()
 	chatNumber, err := lt.recordsStore.GetRecordNumber()
+	lt.recordStoreMutex.Unlock()
 	if err != nil {
 		return nil
 	}
@@ -45,7 +51,9 @@ func (lt *LinkTracker) checkAllLinks() interface{} {
 		go func(start int, limit int) {
 			wg.Add(1)
 			defer wg.Done()
+			lt.recordStoreMutex.Lock()
 			records, _ := lt.recordsStore.GetRecordOffset(start, limit)
+			lt.recordStoreMutex.Unlock()
 			for _, record := range records {
 				err = lt.checkLink(&record)
 				if err != nil {
@@ -61,7 +69,9 @@ func (lt *LinkTracker) tryCheckStatusError(record *storage.ChatRepoRecord, err e
 	var statusErr Common.StatusError
 	if errors.As(err, &statusErr) {
 		if statusErr.StatusCode == 404 {
+			lt.storeManagerMutex.Lock()
 			_, err = lt.storeManager.DeleteRepo(record.Chat.ChatID, record.Repo.Owner, record.Repo.Name)
+			lt.storeManagerMutex.Unlock()
 			if err != nil {
 				return statusErr
 			}
@@ -73,21 +83,25 @@ func (lt *LinkTracker) tryCheckStatusError(record *storage.ChatRepoRecord, err e
 func (lt *LinkTracker) checkLink(record *storage.ChatRepoRecord) error {
 	needToUpdateRepo := false
 	if !record.Repo.LastCommit.IsZero() {
+		lt.ghServiceMutex.Lock()
 		commits, err := lt.ghService.GetCommits(record.Repo.Name, record.Repo.Owner, record.Repo.LastCommit)
+		lt.ghServiceMutex.Unlock()
 		if err != nil {
 			return lt.tryCheckStatusError(record, err)
 		}
 		for _, commit := range commits {
 			newCommitChange := dtos.ConvertCommit(&commit, record)
-			if commit.Committer.Date.After(record.Repo.LastCommit) {
-				record.Repo.LastCommit = commit.Committer.Date.Add(1 * time.Second)
+			if commit.Commit.Committer.Date.After(record.Repo.LastCommit) {
+				record.Repo.LastCommit = commit.Commit.Committer.Date.Add(1 * time.Second)
 				needToUpdateRepo = true
 			}
 			lt.NotifyAll(newCommitChange)
 		}
 	}
 	if !record.Repo.LastIssue.IsZero() {
+		lt.ghServiceMutex.Lock()
 		issues, err := lt.ghService.GetIssues(record.Repo.Name, record.Repo.Owner, record.Repo.LastIssue)
+		lt.ghServiceMutex.Unlock()
 		if err != nil {
 			return lt.tryCheckStatusError(record, err)
 		}
@@ -101,7 +115,9 @@ func (lt *LinkTracker) checkLink(record *storage.ChatRepoRecord) error {
 		}
 	}
 	if !record.Repo.LastPR.IsZero() {
+		lt.ghServiceMutex.Lock()
 		prs, err := lt.ghService.GetPullRequests(record.Repo.Name, record.Repo.Owner, record.Repo.LastPR)
+		lt.ghServiceMutex.Unlock()
 		if err != nil {
 			return lt.tryCheckStatusError(record, err)
 		}
@@ -115,13 +131,15 @@ func (lt *LinkTracker) checkLink(record *storage.ChatRepoRecord) error {
 		}
 	}
 	if needToUpdateRepo {
+		lt.repoStoreMutex.Lock()
+		defer lt.repoStoreMutex.Unlock()
 		return lt.repoStore.UpdateRepo(record.Repo)
 	}
 	return nil
 }
 
 func (lt *LinkTracker) StartTracking() {
-	lt.scheduler.NewJob(gocron.CronJob("* * * * *", true), gocron.NewTask(lt.checkAllLinks()), gocron.WithSingletonMode(gocron.LimitModeReschedule))
+	lt.scheduler.NewJob(gocron.CronJob("* * * * *", true), gocron.NewTask(lt.checkAllLinks), gocron.WithSingletonMode(gocron.LimitModeReschedule))
 	lt.scheduler.Start()
 }
 

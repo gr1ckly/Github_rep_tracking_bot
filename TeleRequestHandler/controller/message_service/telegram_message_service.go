@@ -126,9 +126,13 @@ func (ms *TelegramMessageService) processCommand(update tgbotapi.Update, usrCtx 
 		return usrCtx, ms.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Чтобы отменить команду введите /cancel"))
 	} else {
 		ms.commandMutex.RLock()
-		currCmd := ms.commands[update.Message.Command()]
+		currCmd, ok := ms.commands[update.Message.Command()]
 		ms.commandMutex.RUnlock()
-		usrCtx.CommandName = update.Message.Command()
-		return currCmd.Execute(usrCtx, update), nil
+		if ok {
+			usrCtx.CommandName = update.Message.Command()
+			return currCmd.Execute(usrCtx, update), nil
+		} else {
+			return usrCtx, ms.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Некорректная команда, введите /help, чтобы просмотреть список доступных команд"))
+		}
 	}
 }
