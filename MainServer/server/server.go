@@ -174,6 +174,7 @@ func (serv *Server) handleAddRepo(w http.ResponseWriter, req *http.Request) {
 		serv.sendAns(errDto, 400, w)
 		return
 	}
+
 	id, err := serv.storeManager.AddRepo(repo, &repoDto, chatId)
 	var nvErr custom_errors.AlreadyExists
 	if err != nil && errors.As(err, &nvErr) {
@@ -216,8 +217,10 @@ func (serv *Server) handleDeleteRepo(w http.ResponseWriter, req *http.Request) {
 	}
 	num, err := serv.storeManager.DeleteRepo(chatId, owner, name)
 	var nvErr custom_errors.NoValuesError
-	if errors.As(err, &nvErr) || num == 0 {
-		logger.Error(err.Error())
+	if num == 0 || errors.As(err, &nvErr) {
+		if err != nil {
+			logger.Error(err.Error())
+		}
 		serv.sendAns(nil, 409, w)
 	}
 	if err != nil {

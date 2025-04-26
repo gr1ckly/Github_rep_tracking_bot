@@ -22,8 +22,9 @@ func NewCommandReposHandler(bot bot.Bot[tgbotapi.UpdatesChannel, tgbotapi.Messag
 }
 
 func (cr CommandReposHandler) Execute(usrCtx state_machine.UserContext, update tgbotapi.Update) state_machine.UserContext {
+	var err error
 	if usrCtx.CurrentState.Name != state_machine.NONE {
-		usrCtx, err := usrCtx.CurrentState.Process(usrCtx, update)
+		usrCtx, err = usrCtx.CurrentState.Process(usrCtx, update)
 		if err != nil {
 			logger.Error(err.Error())
 			var prErr custom_erros.ProcessError
@@ -53,9 +54,9 @@ func (cr CommandReposHandler) Execute(usrCtx state_machine.UserContext, update t
 				if err != nil {
 					logger.Error(err.Error())
 				}
-				return usrCtx
+			} else {
+				repos = append(repos, newRepos...)
 			}
-			repos = append(repos, newRepos...)
 		} else {
 			for _, tag := range usrCtx.Tags {
 				newRepos, err := cr.repoService.GetReposByTag(usrCtx.ChatId, tag)
@@ -71,7 +72,7 @@ func (cr CommandReposHandler) Execute(usrCtx state_machine.UserContext, update t
 			logger.Error(err.Error())
 		}
 	}
-	usrCtx, err := usrCtx.CurrentState.Start(usrCtx)
+	usrCtx, err = usrCtx.CurrentState.Start(usrCtx)
 	if err != nil {
 		logger.Error(err.Error())
 	}

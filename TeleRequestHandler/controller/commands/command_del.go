@@ -64,9 +64,7 @@ func (ca CommandDelHandler) Execute(usrCtx state_machine.UserContext, update tgb
 						logger.Error(err.Error())
 					}
 				}
-				return usrCtx
-			}
-			if err == nil {
+			} else if err == nil {
 				err = ca.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Репозиторий удален из отслеживания"))
 				if err != nil {
 					logger.Error(err.Error())
@@ -83,13 +81,10 @@ func (ca CommandDelHandler) Execute(usrCtx state_machine.UserContext, update tgb
 				logger.Error(err.Error())
 			}
 		}
-		usrCtx.CommandName = ""
-		return usrCtx
-	} else {
-		usrCtx, err = usrCtx.CurrentState.Start(usrCtx)
-		if err != nil {
-			logger.Error(err.Error())
-		}
-		return usrCtx
 	}
+	usrCtx, err = usrCtx.CurrentState.Start(usrCtx)
+	if err != nil {
+		logger.Error(err.Error())
+	}
+	return usrCtx
 }

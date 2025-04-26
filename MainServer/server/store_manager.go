@@ -64,10 +64,15 @@ func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, cha
 		id, err = sm.repoStore.AddNewRepo(repo)
 		if err != nil {
 			return -1, err
-		} else {
-			return id, nil
 		}
+		repo.ID = id
 	} else {
+		sm.recordMutex.Lock()
+		defer sm.recordMutex.Unlock()
+		oldRecord, _ := sm.chatRepoRecordStore.GetRecordByChatAndLink(chatId, oldRepo.ID)
+		if oldRecord != nil {
+			return -1, custom_errors.NewAlreadyExistsError(fmt.Errorf("Repo already tracking"))
+		}
 		if oldRepo.LastPR.IsZero() && !repo.LastPR.IsZero() {
 			oldRepo.LastPR = repo.LastPR
 			needToUpdate = true
@@ -87,6 +92,7 @@ func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, cha
 			}
 		}
 		id = oldRepo.ID
+		repo = oldRepo
 	}
 	sm.chatStoreMutex.Lock()
 	defer sm.chatStoreMutex.Unlock()
@@ -94,15 +100,9 @@ func (sm *StoreManager) AddRepo(repo *storage.Repo, repoDto *Common.RepoDTO, cha
 	if err != nil {
 		return -1, nil
 	}
-	record, err := dtos.ParseChatRepoRecord(repoDto, chat, oldRepo)
+	record, err := dtos.ParseChatRepoRecord(repoDto, chat, repo)
 	if err != nil {
 		return -1, err
-	}
-	sm.recordMutex.Lock()
-	defer sm.recordMutex.Unlock()
-	oldRecord, err := sm.chatRepoRecordStore.GetRecordByChatAndLink(chatId, oldRepo.ID)
-	if oldRecord != nil {
-		return -1, custom_errors.NewAlreadyExistsError(fmt.Errorf("Repo already tracking"))
 	}
 	_, err = sm.chatRepoRecordStore.AddNewRecord(record)
 	if err != nil {
