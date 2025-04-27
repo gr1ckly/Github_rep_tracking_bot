@@ -10,6 +10,7 @@ import (
 	"github.com/go-co-op/gocron/v2"
 	"log/slog"
 	"os"
+	"slices"
 	"sync"
 	"time"
 )
@@ -38,40 +39,40 @@ func NewLinkTracker(ghService github_sdk.GithubService, storeManager *server.Sto
 	return &LinkTracker{sync.Mutex{}, ghService, sync.Mutex{}, storeManager, sync.Mutex{}, recordsStore, sync.Mutex{}, repoStore, batchSize, observers, scheduler}, nil
 }
 
-func (lt *LinkTracker) checkAllLinks() interface{} {
-	lt.recordStoreMutex.Lock()
-	chatNumber, err := lt.recordsStore.GetRecordNumber()
-	lt.recordStoreMutex.Unlock()
+func (lt LinkTracker) checkAllLinks() interface{} {
+	lt.repoStoreMutex.Lock()
+	repoNumber, err := lt.repoStore.GetRepoNumber()
+	lt.repoStoreMutex.Unlock()
 	if err != nil {
 		return nil
 	}
 	wg := sync.WaitGroup{}
 	defer wg.Wait()
-	for i := 0; i < chatNumber; i += lt.batchSize {
+	for i := 0; i < repoNumber; i += lt.batchSize {
 		go func(start int, limit int) {
 			wg.Add(1)
 			defer wg.Done()
-			lt.recordStoreMutex.Lock()
-			records, _ := lt.recordsStore.GetRecordOffset(start, limit)
-			lt.recordStoreMutex.Unlock()
-			for _, record := range records {
-				err = lt.checkLink(&record)
+			lt.repoStoreMutex.Lock()
+			repos, _ := lt.repoStore.GetReposOffset(start, limit)
+			lt.repoStoreMutex.Unlock()
+			for _, repo := range repos {
+				err = lt.checkLink(&repo)
 				if err != nil {
 					logger.Error(err.Error())
 				}
 			}
-		}(i, chatNumber)
+		}(i, repoNumber)
 	}
 	return nil
 }
 
-func (lt *LinkTracker) tryCheckStatusError(record *storage.ChatRepoRecord, err error) error {
+func (lt LinkTracker) tryCheckStatusError(repo *storage.Repo, err error) error {
 	var statusErr Common.StatusError
 	if errors.As(err, &statusErr) {
 		if statusErr.StatusCode == 404 {
-			lt.storeManagerMutex.Lock()
-			_, err = lt.storeManager.DeleteRepo(record.Chat.ChatID, record.Repo.Owner, record.Repo.Name)
-			lt.storeManagerMutex.Unlock()
+			lt.repoStoreMutex.Lock()
+			defer lt.repoStoreMutex.Unlock()
+			err = lt.repoStore.RemoveRepo(repo.ID)
 			if err != nil {
 				return statusErr
 			}
@@ -80,74 +81,92 @@ func (lt *LinkTracker) tryCheckStatusError(record *storage.ChatRepoRecord, err e
 	return err
 }
 
-func (lt *LinkTracker) checkLink(record *storage.ChatRepoRecord) error {
+func (lt LinkTracker) checkLink(repo *storage.Repo) error {
 	needToUpdateRepo := false
-	if !record.Repo.LastCommit.IsZero() {
+	lt.recordStoreMutex.Lock()
+	records, err := lt.recordsStore.GetRecordByLink(repo.ID)
+	defer lt.recordStoreMutex.Unlock()
+	if err != nil {
+		return err
+	}
+	if !repo.LastCommit.IsZero() {
 		lt.ghServiceMutex.Lock()
-		commits, err := lt.ghService.GetCommits(record.Repo.Name, record.Repo.Owner, record.Repo.LastCommit)
+		commits, err := lt.ghService.GetCommits(repo.Name, repo.Owner, repo.LastCommit)
 		lt.ghServiceMutex.Unlock()
 		if err != nil {
-			return lt.tryCheckStatusError(record, err)
+			return lt.tryCheckStatusError(repo, err)
 		}
 		for _, commit := range commits {
-			newCommitChange := dtos.ConvertCommit(&commit, record)
-			if commit.Commit.Committer.Date.After(record.Repo.LastCommit) {
-				record.Repo.LastCommit = commit.Commit.Committer.Date.Add(1 * time.Second)
+			if commit.Commit.Committer.Date.After(repo.LastCommit) {
+				repo.LastCommit = commit.Commit.Committer.Date.Add(1 * time.Second)
 				needToUpdateRepo = true
 			}
-			lt.NotifyAll(newCommitChange)
+			for _, record := range records {
+				if slices.Contains(record.Events, Common.Commit) {
+					newCommitChange := dtos.ConvertCommit(&commit, record.Chat.ChatID, repo.Link)
+					lt.NotifyAll(newCommitChange)
+				}
+			}
 		}
 	}
-	if !record.Repo.LastIssue.IsZero() {
+	if !repo.LastIssue.IsZero() {
 		lt.ghServiceMutex.Lock()
-		issues, err := lt.ghService.GetIssues(record.Repo.Name, record.Repo.Owner, record.Repo.LastIssue)
+		issues, err := lt.ghService.GetIssues(repo.Name, repo.Owner, repo.LastIssue)
 		lt.ghServiceMutex.Unlock()
 		if err != nil {
-			return lt.tryCheckStatusError(record, err)
+			return lt.tryCheckStatusError(repo, err)
 		}
 		for _, issue := range issues {
-			newIssueChange := dtos.ConvertIssue(&issue, record)
-			if issue.UpdatedAt.After(record.Repo.LastCommit) {
-				record.Repo.LastIssue = issue.UpdatedAt.Add(1 * time.Second)
+			for _, record := range records {
+				if slices.Contains(record.Events, Common.Issue) {
+					newCommitChange := dtos.ConvertIssue(&issue, record.Chat.ChatID, repo.Link)
+					lt.NotifyAll(newCommitChange)
+				}
+			}
+			if issue.UpdatedAt.After(repo.LastCommit) {
+				repo.LastIssue = issue.UpdatedAt.Add(1 * time.Second)
 				needToUpdateRepo = true
 			}
-			lt.NotifyAll(newIssueChange)
 		}
 	}
-	if !record.Repo.LastPR.IsZero() {
+	if !repo.LastPR.IsZero() {
 		lt.ghServiceMutex.Lock()
-		prs, err := lt.ghService.GetPullRequests(record.Repo.Name, record.Repo.Owner, record.Repo.LastPR)
+		prs, err := lt.ghService.GetPullRequests(repo.Name, repo.Owner, repo.LastPR)
 		lt.ghServiceMutex.Unlock()
 		if err != nil {
-			return lt.tryCheckStatusError(record, err)
+			return lt.tryCheckStatusError(repo, err)
 		}
 		for _, pr := range prs {
-			newPRChange := dtos.ConvertPR(&pr, record)
-			if pr.UpdatedAt.After(record.Repo.LastCommit) {
-				record.Repo.LastPR = pr.UpdatedAt.Add(1 * time.Second)
+			if pr.UpdatedAt.After(repo.LastCommit) {
+				repo.LastPR = pr.UpdatedAt.Add(1 * time.Second)
 				needToUpdateRepo = true
 			}
-			lt.NotifyAll(newPRChange)
+			for _, record := range records {
+				if slices.Contains(record.Events, Common.PullRequest) {
+					newCommitChange := dtos.ConvertPR(&pr, record.Chat.ChatID, repo.Link)
+					lt.NotifyAll(newCommitChange)
+				}
+			}
 		}
 	}
 	if needToUpdateRepo {
 		lt.repoStoreMutex.Lock()
 		defer lt.repoStoreMutex.Unlock()
-		return lt.repoStore.UpdateRepo(record.Repo)
+		return lt.repoStore.UpdateRepo(repo)
 	}
 	return nil
 }
 
-func (lt *LinkTracker) StartTracking() {
+func (lt LinkTracker) StartTracking() {
 	lt.scheduler.NewJob(gocron.CronJob("* * * * *", true), gocron.NewTask(lt.checkAllLinks), gocron.WithSingletonMode(gocron.LimitModeReschedule))
 	lt.scheduler.Start()
 }
 
-func (lt *LinkTracker) Stop() error {
+func (lt LinkTracker) Stop() error {
 	return lt.scheduler.Shutdown()
 }
 
-func (lt *LinkTracker) NotifyAll(msg any) {
+func (lt LinkTracker) NotifyAll(msg any) {
 	for _, obs := range lt.observers {
 		err := obs.Notify(msg)
 		if err != nil {
@@ -156,11 +175,11 @@ func (lt *LinkTracker) NotifyAll(msg any) {
 	}
 }
 
-func (lt *LinkTracker) AddObserver(observer Observer[any]) {
+func (lt LinkTracker) AddObserver(observer Observer[any]) {
 	lt.observers = append(lt.observers, observer)
 }
 
-func (lt *LinkTracker) RemoveObserver(observer Observer[any]) {
+func (lt LinkTracker) RemoveObserver(observer Observer[any]) {
 	newObservers := []Observer[any]{}
 	for _, obs := range lt.observers {
 		if obs != observer {

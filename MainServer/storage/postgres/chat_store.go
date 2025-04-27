@@ -40,7 +40,7 @@ func NewPostgresChatStore(timeout int, dbUrl string) (*PostgresChatStore, error)
 func (pc *PostgresChatStore) AddNewChat(chat *storage.Chat) (int64, error) {
 	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
-		return -1, nil
+		return -1, err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)
@@ -64,7 +64,7 @@ func (pc *PostgresChatStore) AddNewChat(chat *storage.Chat) (int64, error) {
 func (pc *PostgresChatStore) RemoveChat(id int64) error {
 	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
-		return nil
+		return err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)
@@ -82,7 +82,7 @@ func (pc *PostgresChatStore) RemoveChat(id int64) error {
 func (pc *PostgresChatStore) GetChatByID(id int64) (*storage.Chat, error) {
 	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)
@@ -104,7 +104,7 @@ func (pc *PostgresChatStore) GetChatByID(id int64) (*storage.Chat, error) {
 func (pc *PostgresChatStore) GetChatsOffset(start int, limit int) ([]storage.Chat, error) {
 	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)
@@ -131,7 +131,7 @@ func (pc *PostgresChatStore) GetChatsOffset(start int, limit int) ([]storage.Cha
 func (pc *PostgresChatStore) GetChatNumber() (int, error) {
 	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
-		return -1, nil
+		return -1, err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)
@@ -153,7 +153,7 @@ func (pc *PostgresChatStore) GetChatNumber() (int, error) {
 func (pc *PostgresChatStore) UpdateChat(chat *storage.Chat) error {
 	conn, err := pc.pool.Acquire(context.Background())
 	if err != nil {
-		return nil
+		return err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pc.timeout)*time.Second)

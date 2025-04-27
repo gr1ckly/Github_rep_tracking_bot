@@ -45,7 +45,7 @@ func NewPostgresRepoStore(timeout int, dbUrl string) (*PostgresRepoStore, error)
 func (pr *PostgresRepoStore) AddNewRepo(repo *storage.Repo) (int, error) {
 	conn, err := pr.pool.Acquire(context.Background())
 	if err != nil {
-		return -1, nil
+		return -1, err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pr.timeout)*time.Second)
@@ -67,7 +67,7 @@ func (pr *PostgresRepoStore) AddNewRepo(repo *storage.Repo) (int, error) {
 func (pr *PostgresRepoStore) RemoveRepo(id int) error {
 	conn, err := pr.pool.Acquire(context.Background())
 	if err != nil {
-		return nil
+		return err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pr.timeout)*time.Second)
@@ -85,7 +85,7 @@ func (pr *PostgresRepoStore) RemoveRepo(id int) error {
 func (pr *PostgresRepoStore) GetRepoByID(id int) (*storage.Repo, error) {
 	conn, err := pr.pool.Acquire(context.Background())
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pr.timeout)*time.Second)
@@ -107,7 +107,7 @@ func (pr *PostgresRepoStore) GetRepoByID(id int) (*storage.Repo, error) {
 func (pr *PostgresRepoStore) GetRepoByOwnerAndName(owner string, name string) (*storage.Repo, error) {
 	conn, err := pr.pool.Acquire(context.Background())
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pr.timeout)*time.Second)
@@ -132,14 +132,14 @@ func (pr *PostgresRepoStore) GetRepoByOwnerAndName(owner string, name string) (*
 func (pr *PostgresRepoStore) GetReposOffset(start int, limit int) ([]storage.Repo, error) {
 	conn, err := pr.pool.Acquire(context.Background())
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pr.timeout)*time.Second)
 	defer cancel()
 	tx, err := conn.Begin(ctx)
 	defer tx.Rollback(ctx)
-	row, err := tx.Query(ctx, GET_CHATS_OFFSET, start, limit)
+	row, err := tx.Query(ctx, GET_REPOS_OFFSET, start, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (pr *PostgresRepoStore) GetReposOffset(start int, limit int) ([]storage.Rep
 func (pr *PostgresRepoStore) GetRepoNumber() (int, error) {
 	conn, err := pr.pool.Acquire(context.Background())
 	if err != nil {
-		return -1, nil
+		return -1, err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pr.timeout)*time.Second)
@@ -181,7 +181,7 @@ func (pr *PostgresRepoStore) GetRepoNumber() (int, error) {
 func (pr *PostgresRepoStore) UpdateRepo(repo *storage.Repo) error {
 	conn, err := pr.pool.Acquire(context.Background())
 	if err != nil {
-		return nil
+		return err
 	}
 	defer conn.Release()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(pr.timeout)*time.Second)

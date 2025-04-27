@@ -3,13 +3,12 @@ package dtos
 import (
 	"Common"
 	"Crypto_Bot/MainServer/github_sdk"
-	"Crypto_Bot/MainServer/storage"
 )
 
-func ConvertCommit(commit *github_sdk.Commit, record *storage.ChatRepoRecord) Common.ChangingDTO {
+func ConvertCommit(commit *github_sdk.Commit, chatId int64, link string) Common.ChangingDTO {
 	return Common.ChangingDTO{
-		ChatId:    record.Chat.ChatID,
-		Link:      record.Repo.Link,
+		ChatId:    chatId,
+		Link:      link,
 		Event:     Common.Commit,
 		Author:    commit.Commit.Author.Name,
 		Title:     commit.Commit.Message,
@@ -17,10 +16,10 @@ func ConvertCommit(commit *github_sdk.Commit, record *storage.ChatRepoRecord) Co
 	}
 }
 
-func ConvertIssue(issue *github_sdk.Issue, record *storage.ChatRepoRecord) Common.ChangingDTO {
+func ConvertIssue(issue *github_sdk.Issue, chatId int64, link string) Common.ChangingDTO {
 	return Common.ChangingDTO{
-		ChatId:    record.Chat.ChatID,
-		Link:      record.Repo.Link,
+		ChatId:    chatId,
+		Link:      link,
 		Event:     Common.Issue,
 		Author:    issue.User.Login,
 		Title:     issue.Title,
@@ -28,10 +27,10 @@ func ConvertIssue(issue *github_sdk.Issue, record *storage.ChatRepoRecord) Commo
 	}
 }
 
-func ConvertPR(pr *github_sdk.PullRequest, record *storage.ChatRepoRecord) Common.ChangingDTO {
+func ConvertPR(pr *github_sdk.PullRequest, chatId int64, link string) Common.ChangingDTO {
 	return Common.ChangingDTO{
-		ChatId:    record.Chat.ChatID,
-		Link:      record.Repo.Link,
+		ChatId:    chatId,
+		Link:      link,
 		Event:     Common.PullRequest,
 		Author:    pr.User.Login,
 		Title:     pr.Title,

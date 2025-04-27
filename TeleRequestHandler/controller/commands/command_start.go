@@ -35,6 +35,7 @@ func (cs CommandStartHandler) Execute(usrCtx state_machine.UserContext, upd tgbo
 	}
 	var servErr custom_erros.ServerError
 	if errors.As(err, &servErr) && servErr.StatusCode == 409 {
+		logger.Error(err.Error())
 		err = cs.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Вы уже зарегистрированы"))
 		if err != nil {
 			logger.Error(err.Error())
@@ -45,6 +46,7 @@ func (cs CommandStartHandler) Execute(usrCtx state_machine.UserContext, upd tgbo
 			logger.Error(err.Error())
 		}
 	} else {
+		logger.Error(err.Error())
 		err = cs.bot.SendMessage(tgbotapi.NewMessage(usrCtx.ChatId, "Ошибка при регистрации чата, повторите попытку позднее"))
 		if err != nil {
 			logger.Error(err.Error())
