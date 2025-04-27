@@ -68,6 +68,7 @@ func Launch(ctx context.Context) error {
 	}
 	kafkaService, err := notification_service.NewKafkaNotificationWaiter(kafkaNetwork, kafkaAddr, kafkaTopicName, kafkaTopicPartition, kafkaTopicReplicationFactor, kafkaGroupId, bot)
 	if err != nil {
+		fmt.Println("Kafka problem")
 		return err
 	}
 	defer kafkaService.Close()
